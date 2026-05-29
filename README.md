@@ -1,0 +1,1 @@
+# hot-spots-campaign-manager
