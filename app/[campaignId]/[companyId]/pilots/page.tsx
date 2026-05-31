@@ -7,25 +7,26 @@ import PilotCard from "@/components/pilots/PilotCard";
 import { MAX_NAMED_PILOTS } from "@/lib/constants/scales";
 
 interface Props {
-  params: Promise<{ campaignId: string }>;
+  params: Promise<{ campaignId: string; companyId: string }>;
 }
 
 export default async function PilotsPage({ params }: Props) {
-  const { campaignId } = await params;
+  const { campaignId, companyId } = await params;
 
-  const campaign = await prisma.campaign.findUnique({
-    where: { id: campaignId },
+  const company = await prisma.company.findUnique({
+    where: { id: companyId },
     include: {
+      campaign: { select: { gameRules: true } },
       pilots: { include: { unit: true }, orderBy: { createdAt: "asc" } },
       units: true,
     },
   });
 
-  if (!campaign) notFound();
+  if (!company || company.campaignId !== campaignId) notFound();
 
-  const namedPilots = campaign.pilots.filter((p) => p.isNamed && !p.isKilled);
-  const regularCrew = campaign.pilots.filter((p) => !p.isNamed && !p.isKilled);
-  const killed = campaign.pilots.filter((p) => p.isKilled);
+  const namedPilots = company.pilots.filter((p) => p.isNamed && !p.isKilled);
+  const regularCrew = company.pilots.filter((p) => !p.isNamed && !p.isKilled);
+  const killed = company.pilots.filter((p) => p.isKilled);
 
   return (
     <div className="space-y-6">
@@ -37,8 +38,8 @@ export default async function PilotsPage({ params }: Props) {
           </p>
         </div>
         <AddPilotForm
-          campaignId={campaignId}
-          units={campaign.units.filter((u) => u.status !== "TRULY_DESTROYED")}
+          companyId={companyId}
+          units={company.units.filter((u) => u.status !== "TRULY_DESTROYED")}
           namedPilotCount={namedPilots.length}
         />
       </div>
@@ -54,7 +55,7 @@ export default async function PilotsPage({ params }: Props) {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {namedPilots.map((pilot) => (
-              <PilotCard key={pilot.id} pilot={pilot} isAlphaStrike={campaign.gameRules === "ALPHA_STRIKE"} />
+              <PilotCard key={pilot.id} pilot={pilot} isAlphaStrike={company.campaign.gameRules === "ALPHA_STRIKE"} />
             ))}
           </div>
         )}

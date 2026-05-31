@@ -34,10 +34,10 @@ interface Props {
   contract: Contract & { tracks?: { trackNumber: number }[] };
   units: Unit[];
   pilots: Pilot[];
-  campaignId: string;
+  companyId: string;
 }
 
-export default function AddTrackForm({ contract, units, pilots, campaignId }: Props) {
+export default function AddTrackForm({ contract, units, pilots, companyId }: Props) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
@@ -119,7 +119,7 @@ export default function AddTrackForm({ contract, units, pilots, campaignId }: Pr
           pilotResults,
           salvageItems,
         },
-        campaignId
+        companyId
       );
       setOpen(false);
       setSelectedUnitIds([]);

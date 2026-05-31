@@ -8,7 +8,6 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { createCampaign } from "@/lib/actions/campaign";
-import { STARTING_WARCHEST } from "@/lib/constants/scales";
 
 export default function NewCampaignForm() {
   const router = useRouter();
@@ -22,9 +21,7 @@ export default function NewCampaignForm() {
       const campaign = await createCampaign({
         name: data.get("name") as string,
         gameRules: data.get("gameRules") as "BATTLETECH" | "ALPHA_STRIKE",
-        commandType: data.get("commandType") as "MERCENARY" | "REGULAR_MILITARY",
-        background: data.get("background") as string || undefined,
-        warchest: Number(data.get("warchest")) || STARTING_WARCHEST,
+        background: (data.get("background") as string) || undefined,
       });
       setOpen(false);
       router.push(`/${campaign.id}`);
@@ -38,12 +35,12 @@ export default function NewCampaignForm() {
       </DialogTrigger>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Create Mercenary Command</DialogTitle>
+          <DialogTitle>Create Campaign</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="name">Company Name</Label>
-            <Input id="name" name="name" placeholder="e.g. Henshin Tigers" required />
+            <Label htmlFor="name">Campaign Name</Label>
+            <Input id="name" name="name" placeholder="e.g. Draconis Reach" required />
           </div>
 
           <div className="space-y-1.5">
@@ -58,42 +55,8 @@ export default function NewCampaignForm() {
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="commandType">Command Type</Label>
-            <Select name="commandType" defaultValue="MERCENARY">
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="MERCENARY">Mercenary</SelectItem>
-                <SelectItem value="REGULAR_MILITARY">Regular Military</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="background">Background (optional)</Label>
-            <Select name="background">
-              <SelectTrigger><SelectValue placeholder="Select background…" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Former Draconis Combine">Former Draconis Combine</SelectItem>
-                <SelectItem value="Former Federated Suns">Former Federated Suns</SelectItem>
-                <SelectItem value="Former Capellan Confederation">Former Capellan Confederation</SelectItem>
-                <SelectItem value="Former Raven Alliance">Former Raven Alliance</SelectItem>
-                <SelectItem value="Pirate">Pirate</SelectItem>
-                <SelectItem value="Former Clan">Former Clan</SelectItem>
-                <SelectItem value="Mercenary">Experienced Mercenary</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="warchest">Starting Warchest (SP)</Label>
-            <Input
-              id="warchest"
-              name="warchest"
-              type="number"
-              defaultValue={STARTING_WARCHEST}
-              min={0}
-            />
-            <p className="text-xs text-muted-foreground">Standard: 3,000 SP. Veteran command: 6,000 SP.</p>
+            <Label htmlFor="background">Setting Notes (optional)</Label>
+            <Input id="background" name="background" placeholder="e.g. Hot Spots: Draconis Reach, 3151" />
           </div>
 
           <div className="flex gap-2 pt-2">
@@ -101,7 +64,7 @@ export default function NewCampaignForm() {
               Cancel
             </Button>
             <Button type="submit" className="flex-1" disabled={isPending}>
-              {isPending ? "Creating…" : "Create Command"}
+              {isPending ? "Creating…" : "Create Campaign"}
             </Button>
           </div>
         </form>

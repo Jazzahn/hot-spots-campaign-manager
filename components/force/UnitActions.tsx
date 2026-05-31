@@ -10,7 +10,7 @@ interface Props {
   unit: Unit;
   pilots: Pilot[];
   repairCost: number;
-  campaignId: string;
+  companyId: string;
 }
 
 export default function UnitActions({ unit, repairCost }: Props) {

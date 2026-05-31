@@ -11,12 +11,12 @@ import { createPilot } from "@/lib/actions/pilots";
 import { MAX_NAMED_PILOTS } from "@/lib/constants/scales";
 
 interface Props {
-  campaignId: string;
+  companyId: string;
   units: Unit[];
   namedPilotCount: number;
 }
 
-export default function AddPilotForm({ campaignId, units, namedPilotCount }: Props) {
+export default function AddPilotForm({ companyId, units, namedPilotCount }: Props) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
@@ -25,7 +25,7 @@ export default function AddPilotForm({ campaignId, units, namedPilotCount }: Pro
     const data = new FormData(e.currentTarget);
     startTransition(async () => {
       await createPilot({
-        campaignId,
+        companyId,
         name: data.get("name") as string,
         callsign: data.get("callsign") as string || undefined,
         isNamed: data.get("isNamed") === "true",

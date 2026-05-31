@@ -1,9 +1,7 @@
 import Link from "next/link";
 import { getAllCampaigns } from "@/lib/actions/campaign";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { formatSP } from "@/lib/utils";
 import NewCampaignForm from "@/components/NewCampaignForm";
 import DeleteCampaignButton from "@/components/DeleteCampaignButton";
 
@@ -14,8 +12,8 @@ export default async function HomePage() {
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-primary">⚡ Draconis Reach</h1>
-          <p className="text-muted-foreground mt-1">Hot Spots: Draconis Reach · Chaos Campaign: Mercenaries</p>
+          <h1 className="text-3xl font-bold text-primary">Hot Spots</h1>
+          <p className="text-muted-foreground mt-1">Chaos Campaign: Mercenaries</p>
         </div>
         <NewCampaignForm />
       </div>
@@ -24,7 +22,7 @@ export default async function HomePage() {
         <Card className="text-center py-16">
           <CardContent>
             <p className="text-muted-foreground text-lg mb-4">No campaigns yet.</p>
-            <p className="text-sm text-muted-foreground">Create a new mercenary command to get started.</p>
+            <p className="text-sm text-muted-foreground">Create a campaign to get started.</p>
           </CardContent>
         </Card>
       ) : (
@@ -37,23 +35,20 @@ export default async function HomePage() {
                     <CardTitle className="text-lg hover:text-primary transition-colors">{campaign.name}</CardTitle>
                   </Link>
                   <div className="flex items-center gap-1 shrink-0">
-                    <Badge variant="outline">Scale {campaign.scale}</Badge>
+                    <Badge variant="outline">{campaign.gameRules === "ALPHA_STRIKE" ? "Alpha Strike" : "BattleTech"}</Badge>
                     <DeleteCampaignButton campaignId={campaign.id} campaignName={campaign.name} />
                   </div>
                 </div>
               </CardHeader>
               <Link href={`/${campaign.id}`}>
                 <CardContent className="space-y-3">
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <Stat label="Warchest" value={formatSP(campaign.warchest)} />
-                    <Stat label="Reputation" value={String(campaign.reputation)} />
-                    <Stat label="Month" value={String(campaign.currentMonth)} />
-                    <Stat label="Command" value={campaign.commandType === "MERCENARY" ? "Mercenary" : "Regular"} />
-                  </div>
-                  <div className="flex gap-3 text-xs text-muted-foreground pt-1 border-t border-border">
-                    <span>{campaign._count.units} units</span>
-                    <span>{campaign._count.pilots} pilots</span>
-                    <span>{campaign._count.contracts} contracts</span>
+                  {campaign.background && (
+                    <p className="text-sm text-muted-foreground">{campaign.background}</p>
+                  )}
+                  <div className="flex gap-3 text-sm text-muted-foreground border-t border-border pt-3">
+                    <span>Month {campaign.currentMonth}</span>
+                    <span>·</span>
+                    <span>{campaign._count.companies} {campaign._count.companies === 1 ? "company" : "companies"}</span>
                   </div>
                 </CardContent>
               </Link>
@@ -61,15 +56,6 @@ export default async function HomePage() {
           ))}
         </div>
       )}
-    </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p className="text-muted-foreground text-xs">{label}</p>
-      <p className="font-medium">{value}</p>
     </div>
   );
 }

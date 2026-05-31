@@ -5,12 +5,19 @@ import { prisma } from "@/lib/db";
 import type { RecordTrackInput } from "@/types";
 import { calculateCombatPay } from "@/lib/calculations/combat-pay";
 import { computePilotStats } from "@/lib/calculations/pilot-handicap";
-import { updateWarchest } from "./campaign";
+import { updateWarchest } from "./company";
 
-export async function recordTrack(input: RecordTrackInput, campaignId: string, isAlphaStrike = false) {
+async function getCompanyPath(companyId: string) {
+  const c = await prisma.company.findUniqueOrThrow({
+    where: { id: companyId },
+    select: { campaignId: true },
+  });
+  return `/${c.campaignId}/${companyId}`;
+}
+
+export async function recordTrack(input: RecordTrackInput, companyId: string, isAlphaStrike = false) {
   const combatPay = calculateCombatPay(input.result as never, input.scale);
 
-  // Create the track record
   const track = await prisma.track.create({
     data: {
       contractId: input.contractId,
@@ -54,10 +61,9 @@ export async function recordTrack(input: RecordTrackInput, campaignId: string, i
     },
   });
 
-  // Log combat pay
   if (combatPay > 0) {
     await updateWarchest(
-      campaignId,
+      companyId,
       combatPay,
       "COMBAT_PAY",
       `Combat Pay — Track ${input.trackNumber} (${input.result})`,
@@ -66,11 +72,10 @@ export async function recordTrack(input: RecordTrackInput, campaignId: string, i
     );
   }
 
-  // Log salvage received
   const totalSalvageSP = input.salvageItems.reduce((sum, s) => sum + s.playerShare, 0);
   if (totalSalvageSP > 0) {
     await updateWarchest(
-      campaignId,
+      companyId,
       totalSalvageSP,
       "SALVAGE",
       `Salvage — Track ${input.trackNumber}`,
@@ -79,19 +84,16 @@ export async function recordTrack(input: RecordTrackInput, campaignId: string, i
     );
   }
 
-  // Update unit statuses
   for (const ur of input.unitResults) {
     await prisma.unit.update({
       where: { id: ur.unitId },
       data: {
         status: ur.damageResult as never,
-        availableNextTrack:
-          ur.damageResult !== "CRIPPLED" && ur.damageResult !== "DESTROYED",
+        availableNextTrack: ur.damageResult !== "CRIPPLED" && ur.damageResult !== "DESTROYED",
       },
     });
   }
 
-  // Allocate SP to named pilots and recompute handicap
   for (const pr of input.pilotResults) {
     const pilot = await prisma.pilot.findUniqueOrThrow({ where: { id: pr.pilotId } });
 
@@ -121,20 +123,19 @@ export async function recordTrack(input: RecordTrackInput, campaignId: string, i
       handicap: stats.handicap,
     };
 
-    if (pr.wasMVP) {
-      updateData.mvpCount = { increment: 1 };
-    }
+    if (pr.wasMVP) updateData.mvpCount = { increment: 1 };
 
     await prisma.pilot.update({ where: { id: pr.pilotId }, data: updateData as never });
   }
 
-  revalidatePath("/contracts");
-  revalidatePath(`/contracts/${input.contractId}`);
+  const path = await getCompanyPath(companyId);
+  revalidatePath(`${path}/contracts`);
+  revalidatePath(`${path}/contracts/${input.contractId}`);
   return track;
 }
 
 export async function recordRepairs(
-  campaignId: string,
+  companyId: string,
   contractId: string,
   month: number,
   repairs: { unitId: string; cost: number; description: string }[]
@@ -144,14 +145,8 @@ export async function recordRepairs(
       where: { id: repair.unitId },
       data: { status: "OPERATIONAL", availableNextTrack: true },
     });
-    await updateWarchest(
-      campaignId,
-      -repair.cost,
-      "REPAIR",
-      repair.description,
-      month,
-      { contractId }
-    );
+    await updateWarchest(companyId, -repair.cost, "REPAIR", repair.description, month, { contractId });
   }
-  revalidatePath("/force");
+  const path = await getCompanyPath(companyId);
+  revalidatePath(`${path}/force`);
 }

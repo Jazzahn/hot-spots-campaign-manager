@@ -98,18 +98,31 @@ enum TransactionCategory {
 // ─── Models ───────────────────────────────────────────────────────────────────
 
 model Campaign {
-  id              String        @id @default(cuid())
+  id           String    @id @default(cuid())
+  name         String
+  gameRules    GameRules @default(BATTLETECH)
+  currentMonth Int       @default(1)
+  background   String?
+
+  companies Company[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Company {
+  id              String      @id @default(cuid())
+  campaignId      String
+  campaign        Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   name            String
-  gameRules       GameRules     @default(BATTLETECH)
-  commandType     CommandType   @default(MERCENARY)
+  commandType     CommandType @default(MERCENARY)
   background      String?
   parentCommand   String?
   rankLevel       Int?
-  warchest        Int           @default(3000)
-  reputation      Int           @default(1)
-  scale           Int           @default(1)
-  currentMonth    Int           @default(1)
-  trackingJumps   Boolean       @default(false)
+  warchest        Int         @default(3000)
+  reputation      Int         @default(1)
+  scale           Int         @default(1)
+  trackingJumps   Boolean     @default(false)
   currentLocation String?
   companyOptions  Json?
 
@@ -124,8 +137,8 @@ model Campaign {
 
 model Unit {
   id                 String     @id @default(cuid())
-  campaignId         String
-  campaign           Campaign   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  companyId          String
+  company            Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
   name               String
   chassis            String
   model              String
@@ -152,8 +165,8 @@ model Unit {
 
 model Pilot {
   id              String   @id @default(cuid())
-  campaignId      String
-  campaign        Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  companyId       String
+  company         Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   unitId          String?
   unit            Unit?    @relation(fields: [unitId], references: [id], onDelete: SetNull)
   name            String
@@ -186,8 +199,8 @@ model Pilot {
 
 model Contract {
   id           String         @id @default(cuid())
-  campaignId   String
-  campaign     Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  companyId    String
+  company      Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
   hotSpot      String
   contractName String
   contractType ContractType   @default(GARRISON)
@@ -281,8 +294,8 @@ model SalvageItem {
 
 model Transaction {
   id             String              @id @default(cuid())
-  campaignId     String
-  campaign       Campaign            @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  companyId      String
+  company        Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
   month          Int
   category       TransactionCategory
   amount         Int

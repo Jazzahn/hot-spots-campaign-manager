@@ -9,20 +9,20 @@ import UnitActions from "@/components/force/UnitActions";
 import { calculateRepairCost, getRepairLabel } from "@/lib/calculations/repair";
 
 interface Props {
-  params: Promise<{ campaignId: string }>;
+  params: Promise<{ campaignId: string; companyId: string }>;
 }
 
 export default async function ForcePage({ params }: Props) {
-  const { campaignId } = await params;
+  const { campaignId, companyId } = await params;
 
-  const campaign = await prisma.campaign.findUnique({
-    where: { id: campaignId },
+  const company = await prisma.company.findUnique({
+    where: { id: companyId },
     include: { units: { orderBy: { createdAt: "asc" } }, pilots: true },
   });
 
-  if (!campaign) notFound();
+  if (!company || company.campaignId !== campaignId) notFound();
 
-  const activeUnits = campaign.units.filter((u) => u.status !== "TRULY_DESTROYED");
+  const activeUnits = company.units.filter((u) => u.status !== "TRULY_DESTROYED");
   const totalBV = activeUnits.reduce((sum, u) => sum + u.battleValue, 0);
 
   return (
@@ -34,7 +34,7 @@ export default async function ForcePage({ params }: Props) {
             {activeUnits.length} units · {formatBV(totalBV)} total
           </p>
         </div>
-        <AddUnitForm campaignId={campaignId} />
+        <AddUnitForm companyId={companyId} />
       </div>
 
       {activeUnits.length === 0 ? (
@@ -45,9 +45,9 @@ export default async function ForcePage({ params }: Props) {
         </Card>
       ) : (
         <div className="space-y-3">
-          {campaign.units.map((unit) => {
+          {company.units.map((unit) => {
             const repairCost = calculateRepairCost(unit.status, unit.tonnage, unit.techBase, unit.unitType);
-            const assignedPilot = campaign.pilots.find((p) => p.unitId === unit.id);
+            const assignedPilot = company.pilots.find((p) => p.unitId === unit.id);
 
             return (
               <Card key={unit.id} className={unit.status === "TRULY_DESTROYED" ? "opacity-50" : ""}>
@@ -84,9 +84,9 @@ export default async function ForcePage({ params }: Props) {
                     </div>
                     <UnitActions
                       unit={unit}
-                      pilots={campaign.pilots.filter((p) => p.isNamed && !p.isKilled)}
+                      pilots={company.pilots.filter((p) => p.isNamed && !p.isKilled)}
                       repairCost={repairCost}
-                      campaignId={campaignId}
+                      companyId={companyId}
                     />
                   </div>
                 </CardContent>

@@ -6,12 +6,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatSP } from "@/lib/utils";
 import { UnitStatusBadge } from "@/components/force/UnitStatusBadge";
-import { calculateCombatPay } from "@/lib/calculations/combat-pay";
 import ContractActions from "@/components/contracts/ContractActions";
 import AddTrackForm from "@/components/tracks/AddTrackForm";
 
 interface Props {
-  params: Promise<{ id: string }>;
+  params: Promise<{ campaignId: string; companyId: string; contractId: string }>;
 }
 
 const RESULT_LABELS: Record<string, string> = {
@@ -29,12 +28,12 @@ const RESULT_VARIANT: Record<string, "success" | "warning" | "danger" | "seconda
 };
 
 export default async function ContractDetailPage({ params }: Props) {
-  const { id } = await params;
+  const { campaignId, companyId, contractId } = await params;
 
   const contract = await prisma.contract.findUnique({
-    where: { id },
+    where: { id: contractId },
     include: {
-      campaign: { include: { units: true, pilots: { include: { unit: true } } } },
+      company: { include: { units: true, pilots: { include: { unit: true } } } },
       tracks: {
         include: {
           trackUnits: { include: { unit: true } },
@@ -46,33 +45,30 @@ export default async function ContractDetailPage({ params }: Props) {
     },
   });
 
-  if (!contract) notFound();
+  if (!contract || contract.companyId !== companyId || contract.company.campaignId !== campaignId) notFound();
 
-  const campaign = contract.campaign;
+  const company = contract.company;
   const totalCombatPay = contract.tracks.reduce((sum, t) => sum + t.combatPay, 0);
   const maintenanceCost = 500 * contract.scale;
   const basePay = Math.floor(maintenanceCost * (contract.basePayPct / 100));
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <Link
-              href={`/contracts?campaign=${campaign.id}`}
-              className="text-muted-foreground text-sm hover:text-foreground"
-            >
+          <div className="flex items-center gap-2 mb-1">
+            <Link href={`/${campaignId}/${companyId}/contracts`} className="text-muted-foreground text-sm hover:text-foreground">
               ← Contracts
             </Link>
           </div>
-          <h1 className="text-2xl font-bold mt-1">{contract.contractName}</h1>
-          <p className="text-muted-foreground text-sm">{contract.hotSpot} · {contract.contractType.replace("_", " ")} · Scale {contract.scale}</p>
+          <h1 className="text-2xl font-bold">{contract.contractName}</h1>
+          <p className="text-muted-foreground text-sm">
+            {contract.hotSpot} · {contract.contractType.replace(/_/g, " ")} · Scale {contract.scale}
+          </p>
         </div>
-        <ContractActions contract={contract} campaignId={campaign.id} />
+        <ContractActions contract={contract} companyId={companyId} />
       </div>
 
-      {/* Terms summary */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center justify-between">
@@ -98,25 +94,22 @@ export default async function ContractDetailPage({ params }: Props) {
         </CardContent>
       </Card>
 
-      {/* Tracks */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="font-semibold">Tracks</h2>
           {contract.status === "ACTIVE" && (
             <AddTrackForm
-              contract={contract}
-              units={campaign.units.filter((u) => u.availableNextTrack && u.status !== "TRULY_DESTROYED")}
-              pilots={campaign.pilots.filter((p) => p.isNamed && !p.isKilled)}
-              campaignId={campaign.id}
+              contract={{ ...contract, tracks: contract.tracks }}
+              units={company.units.filter((u) => u.availableNextTrack && u.status !== "TRULY_DESTROYED")}
+              pilots={company.pilots.filter((p) => p.isNamed && !p.isKilled)}
+              companyId={companyId}
             />
           )}
         </div>
 
         {contract.tracks.length === 0 ? (
           <Card className="text-center py-8">
-            <CardContent>
-              <p className="text-muted-foreground">No tracks yet.</p>
-            </CardContent>
+            <CardContent><p className="text-muted-foreground">No tracks yet.</p></CardContent>
           </Card>
         ) : (
           contract.tracks.map((track) => (
@@ -126,50 +119,39 @@ export default async function ContractDetailPage({ params }: Props) {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-semibold">Track {track.trackNumber} — {track.trackType}</span>
-                      <Badge variant={RESULT_VARIANT[track.result] ?? "outline"}>
-                        {RESULT_LABELS[track.result]}
-                      </Badge>
+                      <Badge variant={RESULT_VARIANT[track.result] ?? "outline"}>{RESULT_LABELS[track.result]}</Badge>
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Month {track.month} · Scale {track.scale} ·
-                      VP: {track.playerVP} vs {track.opponentVP}
+                      Month {track.month} · Scale {track.scale} · VP: {track.playerVP} vs {track.opponentVP}
                     </p>
-
-                    {/* Units */}
                     {track.trackUnits.length > 0 && (
                       <div className="flex flex-wrap gap-2 mt-2">
                         {track.trackUnits.map((tu) => (
                           <div key={tu.id} className="flex items-center gap-1 text-xs">
                             <span>{tu.unit.name}</span>
-                            {tu.damageResult !== "OPERATIONAL" && (
-                              <UnitStatusBadge status={tu.damageResult} />
-                            )}
+                            {tu.damageResult !== "OPERATIONAL" && <UnitStatusBadge status={tu.damageResult} />}
                           </div>
                         ))}
                       </div>
                     )}
-
-                    {/* Pilots */}
                     {track.trackPilots.length > 0 && (
                       <div className="flex flex-wrap gap-3 mt-2 text-xs text-muted-foreground">
                         {track.trackPilots.map((tp) => (
                           <span key={tp.id}>
-                            {tp.pilot.name}
-                            {tp.wasMVP && " ⭐"}
-                            {tp.spEarned > 0 && ` +${tp.spEarned} SP`}
+                            {tp.pilot.name}{tp.wasMVP && " ⭐"}{tp.spEarned > 0 && ` +${tp.spEarned} SP`}
                           </span>
                         ))}
                       </div>
                     )}
-
-                    {/* Salvage */}
                     {track.salvageItems.length > 0 && (
                       <div className="mt-2 text-xs text-muted-foreground">
                         Salvage: {track.salvageItems.map((s) => s.unitName).join(", ")}
-                        {" ("}+{formatSP(track.salvageItems.reduce((sum, s) => sum + s.playerShare, 0))}
+                        {" (+"}
+                        {formatSP(track.salvageItems.reduce((sum, s) => sum + s.playerShare, 0))}
                         {")"}
                       </div>
                     )}
+                    {track.notes && <p className="text-xs text-muted-foreground mt-1 italic">{track.notes}</p>}
                   </div>
                   <div className="text-right shrink-0">
                     <p className="font-semibold text-green-400">{formatSP(track.combatPay)}</p>

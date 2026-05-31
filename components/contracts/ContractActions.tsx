@@ -8,10 +8,10 @@ import { collectMonthlyBasePay } from "@/lib/actions/contracts";
 
 interface Props {
   contract: Contract;
-  campaignId: string;
+  companyId: string;
 }
 
-export default function ContractActions({ contract, campaignId }: Props) {
+export default function ContractActions({ contract, companyId: _companyId }: Props) {
   const [isPending, startTransition] = useTransition();
 
   function handleActivate() {

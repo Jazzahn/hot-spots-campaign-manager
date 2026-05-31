@@ -9,60 +9,31 @@ export async function createCampaign(input: CreateCampaignInput) {
     data: {
       name: input.name,
       gameRules: input.gameRules,
-      commandType: input.commandType,
       background: input.background,
-      parentCommand: input.parentCommand,
-      warchest: input.warchest ?? 3000,
-      trackingJumps: input.trackingJumps ?? false,
     },
   });
-
-  // Log initial warchest
-  await prisma.transaction.create({
-    data: {
-      campaignId: campaign.id,
-      month: 1,
-      category: "OTHER",
-      amount: campaign.warchest,
-      description: "Starting Warchest",
-      runningBalance: campaign.warchest,
-    },
-  });
-
   revalidatePath("/");
   return campaign;
-}
-
-export async function getCampaign(id: string) {
-  return prisma.campaign.findUnique({
-    where: { id },
-    include: {
-      units: { orderBy: { createdAt: "asc" } },
-      pilots: { include: { unit: true }, orderBy: { createdAt: "asc" } },
-      contracts: {
-        include: {
-          tracks: {
-            include: {
-              trackUnits: { include: { unit: true } },
-              trackPilots: { include: { pilot: true } },
-              salvageItems: true,
-            },
-            orderBy: { trackNumber: "asc" },
-          },
-        },
-        orderBy: { createdAt: "desc" },
-      },
-      transactions: { orderBy: { createdAt: "asc" } },
-    },
-  });
 }
 
 export async function getAllCampaigns() {
   return prisma.campaign.findMany({
     orderBy: { createdAt: "desc" },
     include: {
-      _count: {
-        select: { units: true, pilots: true, contracts: true },
+      _count: { select: { companies: true } },
+    },
+  });
+}
+
+export async function getCampaign(id: string) {
+  return prisma.campaign.findUnique({
+    where: { id },
+    include: {
+      companies: {
+        orderBy: { createdAt: "asc" },
+        include: {
+          _count: { select: { units: true, pilots: true, contracts: true } },
+        },
       },
     },
   });
@@ -73,50 +44,10 @@ export async function deleteCampaign(campaignId: string) {
   revalidatePath("/");
 }
 
-export async function updateReputation(campaignId: string, delta: number) {
-  const campaign = await prisma.campaign.update({
+export async function advanceMonth(campaignId: string) {
+  await prisma.campaign.update({
     where: { id: campaignId },
-    data: { reputation: { increment: delta } },
+    data: { currentMonth: { increment: 1 } },
   });
-  revalidatePath("/");
-  return campaign;
-}
-
-export async function updateWarchest(
-  campaignId: string,
-  amount: number,
-  category: Parameters<typeof prisma.transaction.create>[0]["data"]["category"],
-  description: string,
-  month: number,
-  extra?: { contractId?: string; trackId?: string }
-) {
-  const campaign = await prisma.campaign.findUniqueOrThrow({
-    where: { id: campaignId },
-    select: { warchest: true },
-  });
-
-  const newBalance = campaign.warchest + amount;
-
-  const [updated] = await prisma.$transaction([
-    prisma.campaign.update({
-      where: { id: campaignId },
-      data: { warchest: newBalance },
-    }),
-    prisma.transaction.create({
-      data: {
-        campaignId,
-        month,
-        category,
-        amount,
-        description,
-        runningBalance: newBalance,
-        contractId: extra?.contractId,
-        trackId: extra?.trackId,
-      },
-    }),
-  ]);
-
-  revalidatePath("/");
-  revalidatePath("/ledger");
-  return updated;
+  revalidatePath(`/${campaignId}`);
 }

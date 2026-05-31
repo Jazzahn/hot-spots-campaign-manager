@@ -15,28 +15,53 @@ A BattleTech **Hot Spots** mercenary campaign tracker built with Next.js 15 and 
 | Deployment | Cloudflare Pages via `@cloudflare/next-on-pages` |
 | Language | TypeScript (strict) |
 
+## Data Model Hierarchy
+
+```
+Campaign  (overarching — shared by all players)
+  ├── gameRules, currentMonth, background
+  └── Company[]  (one per player — their mercenary command)
+        ├── warchest, reputation, scale, commandType
+        ├── Unit[]
+        ├── Pilot[]
+        ├── Contract[] → Track[]
+        └── Transaction[]
+```
+
 ## Project Structure
 
 ```
-app/                        # Next.js App Router pages
-  page.tsx                  # Campaign list (root)
-  [campaignId]/             # Campaign-scoped pages
-    layout.tsx              # Campaign nav shell
-    page.tsx                # Dashboard
-    force/                  # Units/mechs
-    pilots/                 # Pilot roster
-    contracts/              # Contracts & tracks
-    ledger/                 # Financial ledger
+app/
+  page.tsx                              # Campaigns list
+  [campaignId]/
+    layout.tsx                          # Campaign breadcrumb header
+    page.tsx                            # Campaign overview (list of companies)
+    [companyId]/
+      layout.tsx                        # Company nav shell (force/pilots/contracts/ledger)
+      page.tsx                          # Company dashboard
+      force/page.tsx
+      pilots/page.tsx
+      contracts/page.tsx
+      contracts/[contractId]/page.tsx
+      ledger/page.tsx
 components/
   ui/                       # Shared primitives (Button, Card, Badge, etc.)
+  NewCampaignForm.tsx       # Creates overarching Campaign
+  NewCompanyForm.tsx        # Creates Company within a Campaign
+  DeleteCampaignButton.tsx
+  DeleteCompanyButton.tsx
   force/                    # Unit-domain components
   pilots/                   # Pilot-domain components
   contracts/                # Contract-domain components
   tracks/                   # Track-domain components
 lib/
   actions/                  # Server Actions ("use server")
-    campaign.ts             # Campaign CRUD + warchest
-    contracts.ts            # Contracts & tracks
+    campaign.ts             # Campaign-level CRUD (createCampaign, getAllCampaigns, advanceMonth)
+    company.ts              # Company-level CRUD + updateWarchest
+    contracts.ts
+    pilots.ts
+    tracks.ts
+    units.ts
   calculations/             # Pure game-rule math
   constants/
     scales.ts               # Force scale limits & costs
@@ -63,12 +88,14 @@ types/
 
 ## Game Domain Knowledge
 
+- **Campaign** — the overarching game. Owns `gameRules`, `currentMonth`, and `background` (world lore). All companies in a campaign share these.
+- **Company** — one player's mercenary command. Has its own `warchest`, `reputation`, `scale`, and roster.
 - **SP (Support Points)** — in-game currency stored as integers (C-Bills at scale). Negative SP = debt.
 - **BV (Battle Value)** — numerical power rating of a unit. Total force BV must stay under the scale limit.
 - **Scale (1–4)** — determines BV limit, maintenance cost, and contract availability. Defined in `lib/constants/scales.ts`.
 - **Named Pilots (max 4)** — earn Skill Points (spEarned) from tracks; invested into gunnery, piloting, edge tokens, or edge abilities.
 - **Tracks** — individual missions within a contract. Each track records unit damage, pilot performance, salvage, and combat pay.
-- **Warchest** — running balance. Every change creates a `Transaction` row. The ledger is append-only; never delete transactions.
+- **Warchest** — running balance per Company. Every change creates a `Transaction` row. The ledger is append-only; never delete transactions.
 - **Enums** — all game-state enums live in `prisma/schema.prisma` and are imported from `@prisma/client`. Never redefine them in TypeScript.
 
 ## Common Workflows

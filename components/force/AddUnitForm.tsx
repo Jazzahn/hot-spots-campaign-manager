@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { createUnit } from "@/lib/actions/units";
 
-export default function AddUnitForm({ campaignId }: { campaignId: string }) {
+export default function AddUnitForm({ companyId }: { companyId: string }) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
@@ -19,7 +19,7 @@ export default function AddUnitForm({ campaignId }: { campaignId: string }) {
     const model = data.get("model") as string;
     startTransition(async () => {
       await createUnit({
-        campaignId,
+        companyId,
         name: model ? `${chassis} ${model}` : chassis,
         chassis,
         model: model || chassis,

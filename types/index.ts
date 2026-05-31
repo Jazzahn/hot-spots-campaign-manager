@@ -1,5 +1,6 @@
 import type {
   Campaign,
+  Company,
   Unit,
   Pilot,
   Contract,
@@ -13,6 +14,7 @@ import type {
 // ─── Re-exports ───────────────────────────────────────────────────────────────
 export type {
   Campaign,
+  Company,
   Unit,
   Pilot,
   Contract,
@@ -25,7 +27,11 @@ export type {
 
 // ─── Rich types with relations ────────────────────────────────────────────────
 
-export type CampaignWithRelations = Campaign & {
+export type CampaignWithCompanies = Campaign & {
+  companies: Company[];
+};
+
+export type CompanyWithRelations = Company & {
   units: Unit[];
   pilots: Pilot[];
   contracts: ContractWithTracks[];
@@ -55,6 +61,12 @@ export type PilotWithUnit = Pilot & {
 export interface CreateCampaignInput {
   name: string;
   gameRules: "BATTLETECH" | "ALPHA_STRIKE";
+  background?: string;
+}
+
+export interface CreateCompanyInput {
+  campaignId: string;
+  name: string;
   commandType: "MERCENARY" | "REGULAR_MILITARY";
   background?: string;
   parentCommand?: string;
@@ -63,7 +75,7 @@ export interface CreateCampaignInput {
 }
 
 export interface CreateUnitInput {
-  campaignId: string;
+  companyId: string;
   name: string;
   chassis: string;
   model: string;
@@ -76,7 +88,7 @@ export interface CreateUnitInput {
 }
 
 export interface CreatePilotInput {
-  campaignId: string;
+  companyId: string;
   name: string;
   callsign?: string;
   isNamed?: boolean;
@@ -84,7 +96,7 @@ export interface CreatePilotInput {
 }
 
 export interface CreateContractInput {
-  campaignId: string;
+  companyId: string;
   hotSpot: string;
   contractName: string;
   contractType: string;

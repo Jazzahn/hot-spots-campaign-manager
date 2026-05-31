@@ -9,7 +9,7 @@ import { formatSP } from "@/lib/utils";
 import { getScale } from "@/lib/constants/scales";
 
 interface Props {
-  params: Promise<{ campaignId: string }>;
+  params: Promise<{ campaignId: string; companyId: string }>;
 }
 
 const STATUS_VARIANT: Record<string, "success" | "warning" | "danger" | "outline" | "secondary"> = {
@@ -20,10 +20,10 @@ const STATUS_VARIANT: Record<string, "success" | "warning" | "danger" | "outline
 };
 
 export default async function ContractsPage({ params }: Props) {
-  const { campaignId } = await params;
+  const { campaignId, companyId } = await params;
 
-  const campaign = await prisma.campaign.findUnique({
-    where: { id: campaignId },
+  const company = await prisma.company.findUnique({
+    where: { id: companyId },
     include: {
       contracts: {
         include: { _count: { select: { tracks: true } } },
@@ -32,19 +32,19 @@ export default async function ContractsPage({ params }: Props) {
     },
   });
 
-  if (!campaign) notFound();
+  if (!company || company.campaignId !== campaignId) notFound();
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Contracts</h1>
-          <p className="text-muted-foreground text-sm mt-1">Reputation: {campaign.reputation}</p>
+          <p className="text-muted-foreground text-sm mt-1">Reputation: {company.reputation}</p>
         </div>
-        <AddContractForm campaignId={campaignId} currentScale={campaign.scale} />
+        <AddContractForm companyId={companyId} currentScale={company.scale} />
       </div>
 
-      {campaign.contracts.length === 0 ? (
+      {company.contracts.length === 0 ? (
         <Card className="text-center py-12">
           <CardContent>
             <p className="text-muted-foreground">No contracts yet. Negotiate your first contract.</p>
@@ -52,7 +52,7 @@ export default async function ContractsPage({ params }: Props) {
         </Card>
       ) : (
         <div className="space-y-3">
-          {campaign.contracts.map((contract) => {
+          {company.contracts.map((contract) => {
             const scaleData = getScale(contract.scale);
             const monthlyBasePay = Math.floor(scaleData.maintenanceCost * (contract.basePayPct / 100));
 
@@ -78,7 +78,7 @@ export default async function ContractsPage({ params }: Props) {
                       </div>
                     </div>
                     <Button variant="outline" asChild size="sm" className="shrink-0">
-                      <Link href={`/${campaignId}/contracts/${contract.id}`}>View</Link>
+                      <Link href={`/${campaignId}/${companyId}/contracts/${contract.id}`}>View</Link>
                     </Button>
                   </div>
                 </CardContent>

@@ -11,11 +11,11 @@ import { BASE_PAY_STEPS } from "@/lib/constants/contract-steps";
 import { HOT_SPOTS_DATA, type ContractTemplate } from "@/lib/constants/hot-spots-data";
 
 interface Props {
-  campaignId: string;
+  companyId: string;
   currentScale: number;
 }
 
-export default function AddContractForm({ campaignId, currentScale }: Props) {
+export default function AddContractForm({ companyId, currentScale }: Props) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [selectedTemplate, setSelectedTemplate] = useState<ContractTemplate | null>(null);
@@ -33,7 +33,7 @@ export default function AddContractForm({ campaignId, currentScale }: Props) {
     const data = new FormData(e.currentTarget);
     startTransition(async () => {
       await createContract({
-        campaignId,
+        companyId,
         hotSpot: data.get("hotSpot") as string,
         contractName: data.get("contractName") as string,
         contractType: data.get("contractType") as string,

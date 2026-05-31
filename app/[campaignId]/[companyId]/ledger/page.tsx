@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { formatSP } from "@/lib/utils";
 
 interface Props {
-  params: Promise<{ campaignId: string }>;
+  params: Promise<{ campaignId: string; companyId: string }>;
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -27,33 +27,33 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 export default async function LedgerPage({ params }: Props) {
-  const { campaignId } = await params;
+  const { campaignId, companyId } = await params;
 
-  const campaign = await prisma.campaign.findUnique({
-    where: { id: campaignId },
+  const company = await prisma.company.findUnique({
+    where: { id: companyId },
     include: { transactions: { orderBy: { createdAt: "asc" } } },
   });
 
-  if (!campaign) notFound();
+  if (!company || company.campaignId !== campaignId) notFound();
 
-  const byMonth = campaign.transactions.reduce<Record<number, typeof campaign.transactions>>(
+  const byMonth = company.transactions.reduce<Record<number, typeof company.transactions>>(
     (acc, tx) => { (acc[tx.month] ||= []).push(tx); return acc; },
     {}
   );
 
   const months = Object.keys(byMonth).map(Number).sort((a, b) => b - a);
-  const inDebt = campaign.warchest < 0;
+  const inDebt = company.warchest < 0;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Financial Ledger</h1>
-          <p className="text-muted-foreground text-sm mt-1">{campaign.transactions.length} transactions</p>
+          <p className="text-muted-foreground text-sm mt-1">{company.transactions.length} transactions</p>
         </div>
         <div className={`text-right ${inDebt ? "text-red-400" : "text-green-400"}`}>
           <p className="text-xs text-muted-foreground">Current Warchest</p>
-          <p className="text-2xl font-bold">{formatSP(campaign.warchest)}</p>
+          <p className="text-2xl font-bold">{formatSP(company.warchest)}</p>
           {inDebt && <p className="text-xs">⚠ In Debt</p>}
         </div>
       </div>

@@ -6,7 +6,7 @@ import type { CreateUnitInput } from "@/types";
 import type { UnitStatus } from "@prisma/client";
 
 export async function createUnit(input: CreateUnitInput) {
-  const unit = await prisma.unit.create({ data: input });
+  const unit = await prisma.unit.create({ data: input as never });
   revalidatePath("/force");
   return unit;
 }

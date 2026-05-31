@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { getCampaign } from "@/lib/actions/campaign";
+import { getCompany } from "@/lib/actions/company";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,74 +9,55 @@ import { UnitStatusBadge } from "@/components/force/UnitStatusBadge";
 import { getScale } from "@/lib/constants/scales";
 
 interface Props {
-  params: Promise<{ id: string }>;
+  params: Promise<{ campaignId: string; companyId: string }>;
 }
 
-export default async function DashboardPage({ params }: Props) {
-  const { id } = await params;
-  const campaign = await getCampaign(id);
-  if (!campaign) notFound();
+export default async function CompanyDashboardPage({ params }: Props) {
+  const { campaignId, companyId } = await params;
+  const company = await getCompany(companyId);
+  if (!company || company.campaignId !== campaignId) notFound();
 
-  const activeContract = campaign.contracts.find((c) => c.status === "ACTIVE");
-  const namedPilots = campaign.pilots.filter((p) => p.isNamed && !p.isKilled);
-  const availableUnits = campaign.units.filter((u) => u.status !== "TRULY_DESTROYED");
-  const scaleData = getScale(campaign.scale);
+  const activeContract = company.contracts.find((c) => c.status === "ACTIVE");
+  const namedPilots = company.pilots.filter((p) => p.isNamed && !p.isKilled);
+  const availableUnits = company.units.filter((u) => u.status !== "TRULY_DESTROYED");
+  const scaleData = getScale(company.scale);
 
   const totalBV = availableUnits.reduce((sum, u) => sum + u.battleValue, 0);
-  const inDebt = campaign.warchest < 0;
-  const debtMonths = inDebt ? Math.ceil(Math.abs(campaign.warchest) / scaleData.maintenanceCost) : 0;
+  const inDebt = company.warchest < 0;
+  const debtMonths = inDebt ? Math.ceil(Math.abs(company.warchest) / scaleData.maintenanceCost) : 0;
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-primary">{campaign.name}</h1>
-          <p className="text-muted-foreground mt-1">
-            {campaign.commandType === "MERCENARY" ? "Mercenary Command" : "Regular Military Command"}
-            {campaign.background ? ` · ${campaign.background}` : ""}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" asChild size="sm">
-            <Link href={`/force?campaign=${campaign.id}`}>Manage Force</Link>
-          </Button>
-          <Button variant="outline" asChild size="sm">
-            <Link href={`/contracts?campaign=${campaign.id}`}>Contracts</Link>
-          </Button>
-        </div>
-      </div>
-
-      {/* Key stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard
           label="Warchest"
-          value={formatSP(campaign.warchest)}
-          sub={inDebt ? `⚠ Debt (${debtMonths}+ months)` : undefined}
+          value={formatSP(company.warchest)}
+          sub={inDebt ? `⚠ Debt (~${debtMonths} months)` : undefined}
           className={inDebt ? "border-destructive/50" : ""}
         />
-        <StatCard label="Reputation" value={String(campaign.reputation)} sub={`Scale ${campaign.scale}`} />
-        <StatCard label="Month" value={String(campaign.currentMonth)} sub="April 3151 base" />
-        <StatCard label="Force BV" value={formatBV(totalBV)} sub={`Scale limit: ${formatBV(scaleData.bvLimit)}`} />
+        <StatCard label="Reputation" value={String(company.reputation)} sub={`Scale ${company.scale}`} />
+        <StatCard label="Month" value={String(company.campaign.currentMonth)} />
+        <StatCard label="Force BV" value={formatBV(totalBV)} sub={`Limit: ${formatBV(scaleData.bvLimit)}`} />
       </div>
 
-      {/* Active contract */}
       {activeContract ? (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <span>Active Contract</span>
-              <Badge variant="success">{activeContract.status}</Badge>
+              <Badge variant="success">ACTIVE</Badge>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-semibold">{activeContract.contractName}</p>
-                <p className="text-sm text-muted-foreground">{activeContract.hotSpot} · {activeContract.contractType}</p>
+                <p className="text-sm text-muted-foreground">
+                  {activeContract.hotSpot} · {activeContract.contractType.replace(/_/g, " ")}
+                </p>
               </div>
               <Button variant="outline" asChild size="sm">
-                <Link href={`/contracts/${activeContract.id}`}>View Contract</Link>
+                <Link href={`/${campaignId}/${companyId}/contracts/${activeContract.id}`}>View Contract</Link>
               </Button>
             </div>
             <div className="grid grid-cols-4 gap-4 text-sm border-t border-border pt-3">
@@ -92,21 +73,19 @@ export default async function DashboardPage({ params }: Props) {
           <CardContent className="flex items-center justify-between py-6">
             <p className="text-muted-foreground">No active contract. Time to find work.</p>
             <Button asChild size="sm">
-              <Link href={`/contracts?campaign=${campaign.id}`}>Find Contract</Link>
+              <Link href={`/${campaignId}/${companyId}/contracts`}>Find Contract</Link>
             </Button>
           </CardContent>
         </Card>
       )}
 
-      {/* Force & Pilots */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Units */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center justify-between text-base">
               <span>Force ({availableUnits.length} units)</span>
               <Button variant="ghost" asChild size="sm">
-                <Link href={`/force?campaign=${campaign.id}`}>Manage →</Link>
+                <Link href={`/${campaignId}/${companyId}/force`}>Manage →</Link>
               </Button>
             </CardTitle>
           </CardHeader>
@@ -132,13 +111,12 @@ export default async function DashboardPage({ params }: Props) {
           </CardContent>
         </Card>
 
-        {/* Named Pilots */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center justify-between text-base">
               <span>Named Pilots ({namedPilots.length}/4)</span>
               <Button variant="ghost" asChild size="sm">
-                <Link href={`/pilots?campaign=${campaign.id}`}>Manage →</Link>
+                <Link href={`/${campaignId}/${companyId}/pilots`}>Manage →</Link>
               </Button>
             </CardTitle>
           </CardHeader>
@@ -169,20 +147,19 @@ export default async function DashboardPage({ params }: Props) {
         </Card>
       </div>
 
-      {/* Recent transactions */}
-      {campaign.transactions.length > 0 && (
+      {company.transactions.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center justify-between text-base">
               <span>Recent Transactions</span>
               <Button variant="ghost" asChild size="sm">
-                <Link href={`/ledger?campaign=${campaign.id}`}>Full Ledger →</Link>
+                <Link href={`/${campaignId}/${companyId}/ledger`}>Full Ledger →</Link>
               </Button>
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-1">
-              {[...campaign.transactions].reverse().slice(0, 5).map((tx) => (
+              {[...company.transactions].reverse().slice(0, 5).map((tx) => (
                 <div key={tx.id} className="flex items-center justify-between text-sm py-1">
                   <span className="text-muted-foreground">{tx.description}</span>
                   <div className="flex items-center gap-4">

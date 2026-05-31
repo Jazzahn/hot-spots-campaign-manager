@@ -8,7 +8,7 @@ import { computePilotStats } from "@/lib/calculations/pilot-handicap";
 export async function createPilot(input: CreatePilotInput) {
   const pilot = await prisma.pilot.create({
     data: {
-      campaignId: input.campaignId,
+      companyId: input.companyId,
       name: input.name,
       callsign: input.callsign,
       isNamed: input.isNamed ?? true,
