@@ -1,0 +1,296 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum GameRules {
+  BATTLETECH
+  ALPHA_STRIKE
+}
+
+enum CommandType {
+  MERCENARY
+  REGULAR_MILITARY
+}
+
+enum UnitType {
+  BATTLEMECH
+  COMBAT_VEHICLE
+  BATTLE_ARMOR
+  INFANTRY
+}
+
+enum TechBase {
+  IS
+  CLAN
+  MIXED
+}
+
+enum UnitStatus {
+  OPERATIONAL
+  ARMOR_DAMAGE
+  STRUCTURE_CRIT
+  CRIPPLED
+  DESTROYED
+  TRULY_DESTROYED
+}
+
+enum ContractType {
+  RAID
+  EXPEDITION
+  PIRATE_HUNT
+  GARRISON
+  INVASION
+  RETAINER
+  ACTS_OF_PIRACY
+}
+
+enum ContractStatus {
+  PENDING
+  ACTIVE
+  COMPLETED
+  BROKEN
+}
+
+enum SupportType {
+  NONE
+  STRAIGHT
+  BATTLE
+}
+
+enum CommandRights {
+  INTEGRATED
+  HOUSE
+  LIAISON
+  INDEPENDENT
+}
+
+enum TrackResult {
+  ALL_OBJECTIVES
+  SUCCESS
+  UNSUCCESSFUL
+  INCOMPLETE
+}
+
+enum TransactionCategory {
+  MAINTENANCE
+  COMBAT_PAY
+  TRANSPORT
+  REPAIR
+  REARM
+  PURCHASE
+  SELL
+  SALVAGE
+  UNIT_TRAINING
+  PILOT_HIRE
+  UNIT_PURCHASE
+  COMMAND_TRAINING
+  BATTLEFIELD_LOSS_COMPENSATION
+  DEBT_INTEREST
+  OTHER
+}
+
+// ─── Models ───────────────────────────────────────────────────────────────────
+
+model Campaign {
+  id              String        @id @default(cuid())
+  name            String
+  gameRules       GameRules     @default(BATTLETECH)
+  commandType     CommandType   @default(MERCENARY)
+  background      String?
+  parentCommand   String?
+  rankLevel       Int?
+  warchest        Int           @default(3000)
+  reputation      Int           @default(1)
+  scale           Int           @default(1)
+  currentMonth    Int           @default(1)
+  trackingJumps   Boolean       @default(false)
+  currentLocation String?
+  companyOptions  Json?
+
+  units        Unit[]
+  pilots       Pilot[]
+  contracts    Contract[]
+  transactions Transaction[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Unit {
+  id                 String     @id @default(cuid())
+  campaignId         String
+  campaign           Campaign   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  name               String
+  chassis            String
+  model              String
+  unitType           UnitType   @default(BATTLEMECH)
+  tonnage            Int
+  battleValue        Int
+  pointValue         Int?
+  techBase           TechBase   @default(IS)
+  status             UnitStatus @default(OPERATIONAL)
+  isOmni             Boolean    @default(false)
+  currentConfig      String?
+  availableNextTrack Boolean    @default(true)
+  isTemporaryHire    Boolean    @default(false)
+  isSalvaged         Boolean    @default(false)
+  originalOwner      String?
+  notes              String?
+
+  pilots     Pilot[]
+  trackUnits TrackUnit[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Pilot {
+  id              String   @id @default(cuid())
+  campaignId      String
+  campaign        Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  unitId          String?
+  unit            Unit?    @relation(fields: [unitId], references: [id], onDelete: SetNull)
+  name            String
+  callsign        String?
+  isNamed         Boolean  @default(true)
+  // Skill levels (the actual game stats)
+  gunnery         Int      @default(4)
+  piloting        Int      @default(5)
+  edgeTokens      Int      @default(1)
+  edgeAbilities   String[] @default([])
+  // SP invested in each category (cumulative)
+  spGunnery       Int      @default(0)
+  spPiloting      Int      @default(0)
+  spEdgeTokens    Int      @default(0)
+  spEdgeAbilities Int      @default(0)
+  totalSPEarned   Int      @default(0)
+  // Derived
+  handicap        Int      @default(0)
+  // Status
+  wounds          Int      @default(0)
+  isKilled        Boolean  @default(false)
+  mvpCount        Int      @default(0)
+  isTemporaryHire Boolean  @default(false)
+
+  trackPilots TrackPilot[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Contract {
+  id           String         @id @default(cuid())
+  campaignId   String
+  campaign     Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  hotSpot      String
+  contractName String
+  contractType ContractType   @default(GARRISON)
+  scale        Int            @default(1)
+  durationMonths Int          @default(3)
+  status       ContractStatus @default(PENDING)
+  // Terms
+  basePayPct      Int          @default(100)
+  supportType     SupportType  @default(STRAIGHT)
+  supportPct      Int          @default(100)
+  salvageRightsPct Int         @default(0)
+  commandRights   CommandRights @default(INDEPENDENT)
+  transportPct    Int          @default(100)
+  // Timeline
+  startMonth   Int?
+  endMonth     Int?
+  notes        String?
+
+  tracks Track[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Track {
+  id          String      @id @default(cuid())
+  contractId  String
+  contract    Contract    @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  trackNumber Int
+  month       Int
+  trackType   String
+  scale       Int         @default(1)
+  result      TrackResult @default(INCOMPLETE)
+  playerVP    Int         @default(0)
+  opponentVP  Int         @default(0)
+  combatPay   Int         @default(0)
+  spToNamedPilots Int     @default(0)
+  notes       String?
+
+  trackUnits   TrackUnit[]
+  trackPilots  TrackPilot[]
+  salvageItems SalvageItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model TrackUnit {
+  id           String     @id @default(cuid())
+  trackId      String
+  track        Track      @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  unitId       String
+  unit         Unit       @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  damageResult UnitStatus @default(OPERATIONAL)
+  retreated    Boolean    @default(false)
+
+  @@unique([trackId, unitId])
+}
+
+model TrackPilot {
+  id              String @id @default(cuid())
+  trackId         String
+  track           Track  @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  pilotId         String
+  pilot           Pilot  @relation(fields: [pilotId], references: [id], onDelete: Cascade)
+  wasMVP          Boolean @default(false)
+  spEarned        Int    @default(0)
+  spToGunnery     Int    @default(0)
+  spToPiloting    Int    @default(0)
+  spToEdgeTokens  Int    @default(0)
+  spToEdgeAbilities Int  @default(0)
+
+  @@unique([trackId, pilotId])
+}
+
+model SalvageItem {
+  id               String  @id @default(cuid())
+  trackId          String
+  track            Track   @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  unitName         String
+  chassis          String?
+  battleValue      Int
+  salvageValue     Int
+  playerShare      Int
+  wasClaimed       Boolean @default(false)
+  wasRejected      Boolean @default(false)
+  claimedByPlayer  String?
+
+  createdAt DateTime @default(now())
+}
+
+model Transaction {
+  id             String              @id @default(cuid())
+  campaignId     String
+  campaign       Campaign            @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  month          Int
+  category       TransactionCategory
+  amount         Int
+  description    String
+  runningBalance Int
+  contractId     String?
+  trackId        String?
+
+  createdAt DateTime @default(now())
+}
