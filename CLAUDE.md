@@ -1,0 +1,117 @@
+# Hot Spots Campaign Manager — Agent Foundation
+
+## Project Overview
+
+A BattleTech **Hot Spots** mercenary campaign tracker built with Next.js 15 and deployed to Cloudflare Pages. Players manage a mercenary command across multiple campaigns, tracking mechs (units), pilots, contracts, tracks (missions), and a running financial ledger (warchest).
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Framework | Next.js 15 (App Router), React 19 |
+| Database | PostgreSQL via Neon (serverless HTTP) |
+| ORM | Prisma 7 with `@prisma/adapter-neon` |
+| UI | Radix UI primitives + Tailwind CSS (shadcn-style components in `components/ui/`) |
+| Deployment | Cloudflare Pages via `@cloudflare/next-on-pages` |
+| Language | TypeScript (strict) |
+
+## Project Structure
+
+```
+app/                        # Next.js App Router pages
+  page.tsx                  # Campaign list (root)
+  [campaignId]/             # Campaign-scoped pages
+    layout.tsx              # Campaign nav shell
+    page.tsx                # Dashboard
+    force/                  # Units/mechs
+    pilots/                 # Pilot roster
+    contracts/              # Contracts & tracks
+    ledger/                 # Financial ledger
+components/
+  ui/                       # Shared primitives (Button, Card, Badge, etc.)
+  force/                    # Unit-domain components
+  pilots/                   # Pilot-domain components
+  contracts/                # Contract-domain components
+  tracks/                   # Track-domain components
+lib/
+  actions/                  # Server Actions ("use server")
+    campaign.ts             # Campaign CRUD + warchest
+    contracts.ts            # Contracts & tracks
+  calculations/             # Pure game-rule math
+  constants/
+    scales.ts               # Force scale limits & costs
+  db.ts                     # Prisma singleton (Neon adapter)
+  utils.ts                  # formatSP, formatBV, cn()
+prisma/
+  schema.prisma             # Single source of truth for all models
+  migrations/               # Migration history
+types/
+  index.ts                  # Shared TypeScript types (inputs, etc.)
+```
+
+## Architecture Rules
+
+**Server Actions, not API routes.** All data mutations go through `lib/actions/` files marked `"use server"`. Never create `app/api/` routes for data operations.
+
+**Pages fetch their own data.** App Router pages are async Server Components that call actions directly — no `useEffect`, no client-side fetching.
+
+**Client components are narrow.** Mark `"use client"` only when you need interactivity (forms, dialogs, transitions). Use `useTransition` + server actions for pending states.
+
+**Prisma transactions for atomicity.** Any operation that modifies both a model and creates a `Transaction` record (warchest changes) must use `prisma.$transaction([...])`. Always call `revalidatePath()` after mutations.
+
+**`@` alias for all imports.** Use `@/lib/...`, `@/components/...`, `@/types`, etc. Never use relative paths that traverse upward.
+
+## Game Domain Knowledge
+
+- **SP (Support Points)** — in-game currency stored as integers (C-Bills at scale). Negative SP = debt.
+- **BV (Battle Value)** — numerical power rating of a unit. Total force BV must stay under the scale limit.
+- **Scale (1–4)** — determines BV limit, maintenance cost, and contract availability. Defined in `lib/constants/scales.ts`.
+- **Named Pilots (max 4)** — earn Skill Points (spEarned) from tracks; invested into gunnery, piloting, edge tokens, or edge abilities.
+- **Tracks** — individual missions within a contract. Each track records unit damage, pilot performance, salvage, and combat pay.
+- **Warchest** — running balance. Every change creates a `Transaction` row. The ledger is append-only; never delete transactions.
+- **Enums** — all game-state enums live in `prisma/schema.prisma` and are imported from `@prisma/client`. Never redefine them in TypeScript.
+
+## Common Workflows
+
+### Adding a new feature
+
+1. Update `prisma/schema.prisma` if data model changes are needed.
+2. Run `npm run db:migrate:dev -- --name <description>` to generate a migration.
+3. Add/update a server action in `lib/actions/`.
+4. Build UI components in the appropriate `components/<domain>/` folder.
+5. Wire up the page in `app/[campaignId]/<section>/`.
+
+### Running the dev server
+
+```bash
+npm run dev      # local Next.js dev server (uses DATABASE_URL from .env.local)
+```
+
+### Database migrations
+
+```bash
+npm run db:migrate:dev -- --name <description>   # create + apply migration
+npm run db:migrate:deploy                         # apply in production
+npm run db:generate                               # regenerate Prisma client after schema edit
+npm run db:studio                                 # Prisma Studio GUI
+```
+
+### Deploying
+
+```bash
+npm run deploy   # builds for Cloudflare Pages + deploys via wrangler
+```
+
+## Environment Variables
+
+Copy `.env.example` to `.env.local`. Required:
+
+- `DATABASE_URL` — Neon connection string (pooled, HTTP mode)
+
+## Conventions
+
+- No comments unless the WHY is non-obvious (a subtle invariant, a game-rule quirk).
+- Amounts are always integers. `formatSP()` and `formatBV()` in `lib/utils.ts` handle display formatting.
+- Tailwind only — no CSS modules, no inline styles.
+- Component files: PascalCase. Utility files: camelCase. Action files: camelCase.
+- Keep domain logic (game math) in `lib/calculations/`, not inside components or actions.
