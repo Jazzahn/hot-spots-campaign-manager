@@ -9,6 +9,9 @@
 -- Step 1: Rename existing Campaign table to Company
 ALTER TABLE "Campaign" RENAME TO "Company";
 
+-- Rename the primary key constraint so "Campaign_pkey" is free for the new table
+ALTER TABLE "Company" RENAME CONSTRAINT "Campaign_pkey" TO "Company_pkey";
+
 -- Step 2: Create the new Campaign parent table
 CREATE TABLE "Campaign" (
     "id" TEXT NOT NULL,
@@ -57,10 +60,10 @@ ALTER TABLE "Company"
     ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- Step 6: Remove fields that moved up to Campaign
+-- Note: background stays on Company for company-specific backstory.
 ALTER TABLE "Company"
     DROP COLUMN "gameRules",
-    DROP COLUMN "currentMonth",
-    DROP COLUMN "background";
+    DROP COLUMN "currentMonth";
 
 -- Step 7: Rename campaignId → companyId in child tables, update FK constraints
 

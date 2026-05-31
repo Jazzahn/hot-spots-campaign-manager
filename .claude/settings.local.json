@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Bash(node_modules/.bin/tsc --noEmit)"
+      "Bash(node_modules/.bin/tsc --noEmit)",
+      "Bash(git -C /workspaces/hot-spots-campaign-manager status)",
+      "Bash(git -C /workspaces/hot-spots-campaign-manager diff --stat)",
+      "Bash(git *)"
     ]
   }
 }
