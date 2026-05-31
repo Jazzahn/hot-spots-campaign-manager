@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { prisma } from "@/lib/db";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,6 +7,7 @@ import { formatSP } from "@/lib/utils";
 import { UnitStatusBadge } from "@/components/force/UnitStatusBadge";
 import ContractActions from "@/components/contracts/ContractActions";
 import AddTrackForm from "@/components/tracks/AddTrackForm";
+import { getContractDetail } from "@/lib/actions/contracts";
 
 interface Props {
   params: Promise<{ campaignId: string; companyId: string; contractId: string }>;
@@ -30,21 +30,7 @@ const RESULT_VARIANT: Record<string, "success" | "warning" | "danger" | "seconda
 export default async function ContractDetailPage({ params }: Props) {
   const { campaignId, companyId, contractId } = await params;
 
-  const contract = await prisma.contract.findUnique({
-    where: { id: contractId },
-    include: {
-      company: { include: { units: true, pilots: { include: { unit: true } } } },
-      tracks: {
-        include: {
-          trackUnits: { include: { unit: true } },
-          trackPilots: { include: { pilot: true } },
-          salvageItems: true,
-        },
-        orderBy: { trackNumber: "asc" },
-      },
-    },
-  });
-
+  const contract = await getContractDetail(contractId);
   if (!contract || contract.companyId !== companyId || contract.company.campaignId !== campaignId) notFound();
 
   const company = contract.company;
@@ -146,9 +132,7 @@ export default async function ContractDetailPage({ params }: Props) {
                     {track.salvageItems.length > 0 && (
                       <div className="mt-2 text-xs text-muted-foreground">
                         Salvage: {track.salvageItems.map((s) => s.unitName).join(", ")}
-                        {" (+"}
-                        {formatSP(track.salvageItems.reduce((sum, s) => sum + s.playerShare, 0))}
-                        {")"}
+                        {" (+"}{formatSP(track.salvageItems.reduce((sum, s) => sum + s.playerShare, 0))}{")"}
                       </div>
                     )}
                     {track.notes && <p className="text-xs text-muted-foreground mt-1 italic">{track.notes}</p>}

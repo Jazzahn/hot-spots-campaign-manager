@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui/badge";
-import type { UnitStatus } from "@prisma/client";
+import type { UnitStatus } from "@/types";
 
 const STATUS_CONFIG: Record<UnitStatus, { label: string; variant: "success" | "warning" | "danger" | "outline" | "secondary" }> = {
   OPERATIONAL:     { label: "Operational", variant: "success" },

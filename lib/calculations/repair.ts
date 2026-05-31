@@ -1,4 +1,6 @@
-import { UnitStatus, UnitType, TechBase } from "@prisma/client";
+import type { UnitStatus } from "@/types";
+type UnitType = "BATTLEMECH" | "COMBAT_VEHICLE" | "BATTLE_ARMOR" | "INFANTRY";
+type TechBase = "IS" | "CLAN" | "MIXED";
 import {
   REPAIR_COSTS,
   CLAN_REPAIR_MULTIPLIER,

@@ -1,8 +1,8 @@
-import { prisma } from "@/lib/db";
 import { notFound } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatSP } from "@/lib/utils";
+import { getCompanyForLedger } from "@/lib/actions/company";
 
 interface Props {
   params: Promise<{ campaignId: string; companyId: string }>;
@@ -28,12 +28,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 export default async function LedgerPage({ params }: Props) {
   const { campaignId, companyId } = await params;
-
-  const company = await prisma.company.findUnique({
-    where: { id: companyId },
-    include: { transactions: { orderBy: { createdAt: "asc" } } },
-  });
-
+  const company = await getCompanyForLedger(companyId);
   if (!company || company.campaignId !== campaignId) notFound();
 
   const byMonth = company.transactions.reduce<Record<number, typeof company.transactions>>(

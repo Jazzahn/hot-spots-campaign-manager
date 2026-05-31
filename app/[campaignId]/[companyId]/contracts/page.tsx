@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { prisma } from "@/lib/db";
 import { notFound } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -7,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import AddContractForm from "@/components/contracts/AddContractForm";
 import { formatSP } from "@/lib/utils";
 import { getScale } from "@/lib/constants/scales";
+import { getCompanyForContracts } from "@/lib/actions/company";
 
 interface Props {
   params: Promise<{ campaignId: string; companyId: string }>;
@@ -21,17 +21,7 @@ const STATUS_VARIANT: Record<string, "success" | "warning" | "danger" | "outline
 
 export default async function ContractsPage({ params }: Props) {
   const { campaignId, companyId } = await params;
-
-  const company = await prisma.company.findUnique({
-    where: { id: companyId },
-    include: {
-      contracts: {
-        include: { _count: { select: { tracks: true } } },
-        orderBy: { createdAt: "desc" },
-      },
-    },
-  });
-
+  const company = await getCompanyForContracts(companyId);
   if (!company || company.campaignId !== campaignId) notFound();
 
   return (
@@ -74,7 +64,7 @@ export default async function ContractsPage({ params }: Props) {
                         <Stat label="Support" value={`${contract.supportType}/${contract.supportPct}%`} />
                         <Stat label="Salvage" value={`${contract.salvageRightsPct}%`} />
                         <Stat label="Command" value={contract.commandRights} />
-                        <Stat label="Tracks" value={String(contract._count.tracks)} />
+                        <Stat label="Tracks" value={String(contract.tracks.length)} />
                       </div>
                     </div>
                     <Button variant="outline" asChild size="sm" className="shrink-0">

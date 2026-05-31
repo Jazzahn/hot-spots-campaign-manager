@@ -1,10 +1,10 @@
-import { prisma } from "@/lib/db";
 import { notFound } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import AddPilotForm from "@/components/pilots/AddPilotForm";
 import PilotCard from "@/components/pilots/PilotCard";
 import { MAX_NAMED_PILOTS } from "@/lib/constants/scales";
+import { getCompanyForPilots } from "@/lib/actions/company";
 
 interface Props {
   params: Promise<{ campaignId: string; companyId: string }>;
@@ -12,16 +12,7 @@ interface Props {
 
 export default async function PilotsPage({ params }: Props) {
   const { campaignId, companyId } = await params;
-
-  const company = await prisma.company.findUnique({
-    where: { id: companyId },
-    include: {
-      campaign: { select: { gameRules: true } },
-      pilots: { include: { unit: true }, orderBy: { createdAt: "asc" } },
-      units: true,
-    },
-  });
-
+  const company = await getCompanyForPilots(companyId);
   if (!company || company.campaignId !== campaignId) notFound();
 
   const namedPilots = company.pilots.filter((p) => p.isNamed && !p.isKilled);
@@ -48,9 +39,7 @@ export default async function PilotsPage({ params }: Props) {
         <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Named Pilots</h2>
         {namedPilots.length === 0 ? (
           <Card className="text-center py-8">
-            <CardContent>
-              <p className="text-muted-foreground">No named pilots. Add up to 4.</p>
-            </CardContent>
+            <CardContent><p className="text-muted-foreground">No named pilots. Add up to 4.</p></CardContent>
           </Card>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

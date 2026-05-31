@@ -1,116 +1,186 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { prisma } from "@/lib/db";
-import type { CreateCompanyInput } from "@/types";
+import { db } from "@/lib/db";
+import { companies, transactions, units, pilots, contracts, campaigns } from "@/lib/schema";
+import { eq, asc, desc } from "drizzle-orm";
+import type { CreateCompanyInput, TransactionCategory } from "@/types";
 
 export async function createCompany(input: CreateCompanyInput) {
-  const company = await prisma.company.create({
-    data: {
+  const companyId = crypto.randomUUID();
+  const warchest = input.warchest ?? 3000;
+
+  await db.batch([
+    db.insert(companies).values({
+      id: companyId,
       campaignId: input.campaignId,
       name: input.name,
       commandType: input.commandType,
       background: input.background,
       parentCommand: input.parentCommand,
-      warchest: input.warchest ?? 3000,
+      warchest,
       trackingJumps: input.trackingJumps ?? false,
-    },
-  });
-
-  await prisma.transaction.create({
-    data: {
-      companyId: company.id,
+      updatedAt: new Date(),
+    }),
+    db.insert(transactions).values({
+      id: crypto.randomUUID(),
+      companyId,
       month: 1,
       category: "OTHER",
-      amount: company.warchest,
+      amount: warchest,
       description: "Starting Warchest",
-      runningBalance: company.warchest,
-    },
-  });
+      runningBalance: warchest,
+    }),
+  ]);
 
   revalidatePath(`/${input.campaignId}`);
-  return company;
+  return { id: companyId, campaignId: input.campaignId, name: input.name };
 }
 
 export async function getCompany(id: string) {
-  return prisma.company.findUnique({
-    where: { id },
-    include: {
+  return db.query.companies.findFirst({
+    where: eq(companies.id, id),
+    with: {
       campaign: true,
-      units: { orderBy: { createdAt: "asc" } },
-      pilots: { include: { unit: true }, orderBy: { createdAt: "asc" } },
+      units: { orderBy: [asc(units.createdAt)] },
+      pilots: {
+        with: { unit: true },
+        orderBy: [asc(pilots.createdAt)],
+      },
       contracts: {
-        include: {
+        with: {
           tracks: {
-            include: {
-              trackUnits: { include: { unit: true } },
-              trackPilots: { include: { pilot: true } },
+            with: {
+              trackUnits: { with: { unit: true } },
+              trackPilots: { with: { pilot: true } },
               salvageItems: true,
             },
-            orderBy: { trackNumber: "asc" },
+            orderBy: (t, { asc }) => [asc(t.trackNumber)],
           },
         },
-        orderBy: { createdAt: "desc" },
+        orderBy: [desc(contracts.createdAt)],
       },
-      transactions: { orderBy: { createdAt: "asc" } },
+      transactions: { orderBy: [asc(transactions.createdAt)] },
+    },
+  });
+}
+
+export async function getCompanyForLayout(id: string) {
+  return db.query.companies.findFirst({
+    where: eq(companies.id, id),
+    columns: { id: true, name: true, warchest: true, reputation: true, scale: true, campaignId: true },
+  });
+}
+
+export async function getCompanyForForce(id: string) {
+  return db.query.companies.findFirst({
+    where: eq(companies.id, id),
+    columns: { id: true, campaignId: true, warchest: true, reputation: true, scale: true },
+    with: {
+      units: { orderBy: [asc(units.createdAt)] },
+      pilots: true,
+    },
+  });
+}
+
+export async function getCompanyForPilots(id: string) {
+  return db.query.companies.findFirst({
+    where: eq(companies.id, id),
+    columns: { id: true, campaignId: true },
+    with: {
+      campaign: { columns: { gameRules: true } },
+      pilots: {
+        with: { unit: true },
+        orderBy: [asc(pilots.createdAt)],
+      },
+      units: true,
+    },
+  });
+}
+
+export async function getCompanyForContracts(id: string) {
+  return db.query.companies.findFirst({
+    where: eq(companies.id, id),
+    columns: { id: true, campaignId: true, reputation: true, scale: true },
+    with: {
+      contracts: {
+        with: { tracks: { columns: { id: true } } },
+        orderBy: [desc(contracts.createdAt)],
+      },
+    },
+  });
+}
+
+export async function getCompanyForLedger(id: string) {
+  return db.query.companies.findFirst({
+    where: eq(companies.id, id),
+    columns: { id: true, campaignId: true, warchest: true },
+    with: {
+      transactions: { orderBy: [asc(transactions.createdAt)] },
     },
   });
 }
 
 export async function deleteCompany(companyId: string) {
-  const company = await prisma.company.findUniqueOrThrow({
-    where: { id: companyId },
-    select: { campaignId: true },
+  const company = await db.query.companies.findFirst({
+    where: eq(companies.id, companyId),
+    columns: { campaignId: true },
   });
-  await prisma.company.delete({ where: { id: companyId } });
+  if (!company) throw new Error("Company not found");
+  await db.delete(companies).where(eq(companies.id, companyId));
   revalidatePath(`/${company.campaignId}`);
 }
 
 export async function updateReputation(companyId: string, delta: number) {
-  const company = await prisma.company.update({
-    where: { id: companyId },
-    data: { reputation: { increment: delta } },
-    include: { campaign: { select: { id: true } } },
+  const company = await db.query.companies.findFirst({
+    where: eq(companies.id, companyId),
+    columns: { reputation: true, campaignId: true },
   });
-  revalidatePath(`/${company.campaign.id}/${companyId}`);
-  return company;
+  if (!company) throw new Error("Company not found");
+
+  const [updated] = await db
+    .update(companies)
+    .set({ reputation: company.reputation + delta, updatedAt: new Date() })
+    .where(eq(companies.id, companyId))
+    .returning();
+
+  revalidatePath(`/${company.campaignId}/${companyId}`);
+  return updated;
 }
 
 export async function updateWarchest(
   companyId: string,
   amount: number,
-  category: Parameters<typeof prisma.transaction.create>[0]["data"]["category"],
+  category: TransactionCategory,
   description: string,
   month: number,
   extra?: { contractId?: string; trackId?: string }
 ) {
-  const company = await prisma.company.findUniqueOrThrow({
-    where: { id: companyId },
-    select: { warchest: true, campaignId: true },
+  const company = await db.query.companies.findFirst({
+    where: eq(companies.id, companyId),
+    columns: { warchest: true, campaignId: true },
   });
+  if (!company) throw new Error("Company not found");
 
   const newBalance = company.warchest + amount;
 
-  const [updated] = await prisma.$transaction([
-    prisma.company.update({
-      where: { id: companyId },
-      data: { warchest: newBalance },
-    }),
-    prisma.transaction.create({
-      data: {
-        companyId,
-        month,
-        category,
-        amount,
-        description,
-        runningBalance: newBalance,
-        contractId: extra?.contractId,
-        trackId: extra?.trackId,
-      },
+  await db.batch([
+    db.update(companies)
+      .set({ warchest: newBalance, updatedAt: new Date() })
+      .where(eq(companies.id, companyId)),
+    db.insert(transactions).values({
+      id: crypto.randomUUID(),
+      companyId,
+      month,
+      category,
+      amount,
+      description,
+      runningBalance: newBalance,
+      contractId: extra?.contractId,
+      trackId: extra?.trackId,
     }),
   ]);
 
   revalidatePath(`/${company.campaignId}/${companyId}`);
   revalidatePath(`/${company.campaignId}/${companyId}/ledger`);
-  return updated;
 }

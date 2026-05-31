@@ -1,7 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
-import type { Unit, Pilot } from "@prisma/client";
+import type { Unit, Pilot } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { updateUnitStatus, markUnitRepaired, deleteUnit } from "@/lib/actions/units";

@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { prisma } from "@/lib/db";
 import { notFound } from "next/navigation";
+import { getCompanyForLayout } from "@/lib/actions/company";
 
 interface Props {
   children: React.ReactNode;
@@ -10,11 +10,7 @@ interface Props {
 export default async function CompanyLayout({ children, params }: Props) {
   const { campaignId, companyId } = await params;
 
-  const company = await prisma.company.findUnique({
-    where: { id: companyId },
-    select: { id: true, name: true, warchest: true, reputation: true, scale: true, campaignId: true },
-  });
-
+  const company = await getCompanyForLayout(companyId);
   if (!company || company.campaignId !== campaignId) notFound();
 
   const inDebt = company.warchest < 0;

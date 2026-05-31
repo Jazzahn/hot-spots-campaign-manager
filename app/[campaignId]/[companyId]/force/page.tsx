@@ -1,4 +1,3 @@
-import { prisma } from "@/lib/db";
 import { notFound } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -7,6 +6,7 @@ import { formatBV } from "@/lib/utils";
 import AddUnitForm from "@/components/force/AddUnitForm";
 import UnitActions from "@/components/force/UnitActions";
 import { calculateRepairCost, getRepairLabel } from "@/lib/calculations/repair";
+import { getCompanyForForce } from "@/lib/actions/company";
 
 interface Props {
   params: Promise<{ campaignId: string; companyId: string }>;
@@ -14,12 +14,7 @@ interface Props {
 
 export default async function ForcePage({ params }: Props) {
   const { campaignId, companyId } = await params;
-
-  const company = await prisma.company.findUnique({
-    where: { id: companyId },
-    include: { units: { orderBy: { createdAt: "asc" } }, pilots: true },
-  });
-
+  const company = await getCompanyForForce(companyId);
   if (!company || company.campaignId !== campaignId) notFound();
 
   const activeUnits = company.units.filter((u) => u.status !== "TRULY_DESTROYED");
@@ -57,9 +52,7 @@ export default async function ForcePage({ params }: Props) {
                       <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="font-semibold">{unit.name}</h3>
                         <UnitStatusBadge status={unit.status} />
-                        {unit.techBase !== "IS" && (
-                          <Badge variant="secondary">{unit.techBase}</Badge>
-                        )}
+                        {unit.techBase !== "IS" && <Badge variant="secondary">{unit.techBase}</Badge>}
                         {unit.isOmni && <Badge variant="outline">Omni</Badge>}
                         {unit.isTemporaryHire && <Badge variant="secondary">Temp Hire</Badge>}
                         {!unit.availableNextTrack && unit.status !== "TRULY_DESTROYED" && (

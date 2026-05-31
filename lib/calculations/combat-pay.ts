@@ -1,4 +1,4 @@
-import { TrackResult } from "@prisma/client";
+type TrackResult = "ALL_OBJECTIVES" | "SUCCESS" | "UNSUCCESSFUL" | "INCOMPLETE";
 
 const BASE_PAY_PER_SCALE = 500;
 

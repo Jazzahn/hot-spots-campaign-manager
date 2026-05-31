@@ -1,7 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
-import type { Contract } from "@prisma/client";
+import type { Contract } from "@/types";
 import { Button } from "@/components/ui/button";
 import { activateContract, completeContract, breakContract } from "@/lib/actions/contracts";
 import { collectMonthlyBasePay } from "@/lib/actions/contracts";

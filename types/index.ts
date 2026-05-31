@@ -1,39 +1,39 @@
+import type { InferSelectModel } from "drizzle-orm";
 import type {
-  Campaign,
-  Company,
-  Unit,
-  Pilot,
-  Contract,
-  Track,
-  TrackUnit,
-  TrackPilot,
-  SalvageItem,
-  Transaction,
-} from "@prisma/client";
+  campaigns,
+  companies,
+  units,
+  pilots,
+  contracts,
+  tracks,
+  trackUnits,
+  trackPilots,
+  salvageItems,
+  transactions,
+} from "@/lib/schema";
 
-// ─── Re-exports ───────────────────────────────────────────────────────────────
-export type {
-  Campaign,
-  Company,
-  Unit,
-  Pilot,
-  Contract,
-  Track,
-  TrackUnit,
-  TrackPilot,
-  SalvageItem,
-  Transaction,
-};
+// ─── Base types ───────────────────────────────────────────────────────────────
+
+export type Campaign = InferSelectModel<typeof campaigns>;
+export type Company = InferSelectModel<typeof companies>;
+export type Unit = InferSelectModel<typeof units>;
+export type Pilot = InferSelectModel<typeof pilots>;
+export type Contract = InferSelectModel<typeof contracts>;
+export type Track = InferSelectModel<typeof tracks>;
+export type TrackUnit = InferSelectModel<typeof trackUnits>;
+export type TrackPilot = InferSelectModel<typeof trackPilots>;
+export type SalvageItem = InferSelectModel<typeof salvageItems>;
+export type Transaction = InferSelectModel<typeof transactions>;
+
+// Re-export enum types used across the app
+export type { UnitStatus, TransactionCategory, GameRules } from "@/lib/schema";
 
 // ─── Rich types with relations ────────────────────────────────────────────────
 
-export type CampaignWithCompanies = Campaign & {
-  companies: Company[];
-};
-
 export type CompanyWithRelations = Company & {
+  campaign: Campaign;
   units: Unit[];
-  pilots: Pilot[];
+  pilots: PilotWithUnit[];
   contracts: ContractWithTracks[];
   transactions: Transaction[];
 };
@@ -49,7 +49,7 @@ export type TrackWithDetails = Track & {
 };
 
 export type UnitWithPilot = Unit & {
-  pilots: Pilot[];
+  pilot: Pilot | null;
 };
 
 export type PilotWithUnit = Pilot & {
