@@ -23,13 +23,14 @@ export default function AddPilotForm({ companyId, units, namedPilotCount }: Prop
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const data = new FormData(e.currentTarget);
+    const unitId = data.get("unitId") as string;
     startTransition(async () => {
       await createPilot({
         companyId,
         name: data.get("name") as string,
-        callsign: data.get("callsign") as string || undefined,
+        callsign: (data.get("callsign") as string) || undefined,
         isNamed: data.get("isNamed") === "true",
-        unitId: data.get("unitId") as string || undefined,
+        unitId: unitId === "none" ? undefined : unitId || undefined,
       });
       setOpen(false);
     });
@@ -42,7 +43,7 @@ export default function AddPilotForm({ companyId, units, namedPilotCount }: Prop
           Add Pilot
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-sm">
+      <DialogContent className="max-w-sm" aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle>Add MechWarrior</DialogTitle>
         </DialogHeader>
@@ -67,10 +68,10 @@ export default function AddPilotForm({ companyId, units, namedPilotCount }: Prop
           </div>
           <div className="space-y-1.5">
             <Label>Assign to Unit (optional)</Label>
-            <Select name="unitId">
+            <Select name="unitId" defaultValue="none">
               <SelectTrigger><SelectValue placeholder="No assignment" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="">No unit</SelectItem>
+                <SelectItem value="none">No unit</SelectItem>
                 {units.map((u) => (
                   <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
                 ))}
