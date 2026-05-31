@@ -151,3 +151,4 @@ misc/
 # Cloudflare / Wrangler
 .dev.vars
 .wrangler/
+.vercel/
