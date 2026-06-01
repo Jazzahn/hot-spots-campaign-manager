@@ -1,5 +1,6 @@
 import type { InferSelectModel } from "drizzle-orm";
 import type {
+  users,
   campaigns,
   companies,
   units,
@@ -14,6 +15,7 @@ import type {
 
 // ─── Base types ───────────────────────────────────────────────────────────────
 
+export type User = InferSelectModel<typeof users>;
 export type Campaign = InferSelectModel<typeof campaigns>;
 export type Company = InferSelectModel<typeof companies>;
 export type Unit = InferSelectModel<typeof units>;
@@ -26,7 +28,7 @@ export type SalvageItem = InferSelectModel<typeof salvageItems>;
 export type Transaction = InferSelectModel<typeof transactions>;
 
 // Re-export enum types used across the app
-export type { UnitStatus, TransactionCategory, GameRules } from "@/lib/schema";
+export type { UserRole, UnitStatus, TransactionCategory, GameRules } from "@/lib/schema";
 
 // ─── Rich types with relations ────────────────────────────────────────────────
 

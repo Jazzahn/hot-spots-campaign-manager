@@ -12,6 +12,7 @@ import { relations } from "drizzle-orm";
 
 // ─── Enums ────────────────────────────────────────────────────────────────────
 
+export const userRoleEnum = pgEnum("UserRole", ["CAMPAIGN_MANAGER", "PLAYER"]);
 export const gameRulesEnum = pgEnum("GameRules", ["BATTLETECH", "ALPHA_STRIKE"]);
 export const commandTypeEnum = pgEnum("CommandType", ["MERCENARY", "REGULAR_MILITARY"]);
 export const unitTypeEnum = pgEnum("UnitType", ["BATTLEMECH", "COMBAT_VEHICLE", "BATTLE_ARMOR", "INFANTRY"]);
@@ -30,11 +31,20 @@ export const transactionCategoryEnum = pgEnum("TransactionCategory", [
 
 // ─── Derived enum types ───────────────────────────────────────────────────────
 
+export type UserRole = typeof userRoleEnum.enumValues[number];
 export type UnitStatus = typeof unitStatusEnum.enumValues[number];
 export type TransactionCategory = typeof transactionCategoryEnum.enumValues[number];
 export type GameRules = typeof gameRulesEnum.enumValues[number];
 
 // ─── Tables ───────────────────────────────────────────────────────────────────
+
+export const users = pgTable("User", {
+  id: text("id").primaryKey(),
+  callsign: text("callsign").notNull().unique(),
+  passHash: text("passHash").notNull(),
+  role: userRoleEnum("role").notNull().default("PLAYER"),
+  createdAt: timestamp("createdAt", { precision: 3 }).notNull().defaultNow(),
+});
 
 export const campaigns = pgTable("Campaign", {
   id: text("id").primaryKey(),
@@ -42,6 +52,8 @@ export const campaigns = pgTable("Campaign", {
   gameRules: gameRulesEnum("gameRules").notNull().default("BATTLETECH"),
   currentMonth: integer("currentMonth").notNull().default(1),
   background: text("background"),
+  managedById: text("managedById").references(() => users.id),
+  inviteKey: text("inviteKey").unique(),
   createdAt: timestamp("createdAt", { precision: 3 }).notNull().defaultNow(),
   updatedAt: timestamp("updatedAt", { precision: 3 }).notNull().defaultNow(),
 });
@@ -49,6 +61,7 @@ export const campaigns = pgTable("Campaign", {
 export const companies = pgTable("Company", {
   id: text("id").primaryKey(),
   campaignId: text("campaignId").notNull().references(() => campaigns.id, { onDelete: "cascade" }),
+  userId: text("userId").references(() => users.id),
   name: text("name").notNull(),
   commandType: commandTypeEnum("commandType").notNull().default("MERCENARY"),
   background: text("background"),
@@ -200,12 +213,19 @@ export const transactions = pgTable("Transaction", {
 
 // ─── Relations ────────────────────────────────────────────────────────────────
 
-export const campaignRelations = relations(campaigns, ({ many }) => ({
+export const userRelations = relations(users, ({ many }) => ({
+  campaigns: many(campaigns),
   companies: many(companies),
+}));
+
+export const campaignRelations = relations(campaigns, ({ one, many }) => ({
+  companies: many(companies),
+  managedBy: one(users, { fields: [campaigns.managedById], references: [users.id] }),
 }));
 
 export const companyRelations = relations(companies, ({ one, many }) => ({
   campaign: one(campaigns, { fields: [companies.campaignId], references: [campaigns.id] }),
+  user: one(users, { fields: [companies.userId], references: [users.id] }),
   units: many(units),
   pilots: many(pilots),
   contracts: many(contracts),

@@ -6,7 +6,7 @@ import { campaigns, companies } from "@/lib/schema";
 import { eq, count, desc, sql } from "drizzle-orm";
 import type { CreateCampaignInput } from "@/types";
 
-export async function createCampaign(input: CreateCampaignInput) {
+export async function createCampaign(input: CreateCampaignInput & { managedById?: string }) {
   const [campaign] = await db
     .insert(campaigns)
     .values({
@@ -14,6 +14,8 @@ export async function createCampaign(input: CreateCampaignInput) {
       name: input.name,
       gameRules: input.gameRules,
       background: input.background,
+      managedById: input.managedById,
+      inviteKey: crypto.randomUUID(),
       updatedAt: new Date(),
     })
     .returning();

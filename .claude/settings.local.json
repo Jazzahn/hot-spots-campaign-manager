@@ -16,7 +16,12 @@
       "Bash(npm uninstall *)",
       "Bash(node_modules/.bin/opennextjs-cloudflare migrate *)",
       "Bash(node_modules/.bin/opennextjs-cloudflare build *)",
-      "Bash(CLOUDFLARE_API_TOKEN=\"REDACTED_CF_TOKEN\" node_modules/.bin/opennextjs-cloudflare deploy)"
+      "Bash(CLOUDFLARE_API_TOKEN=\"REDACTED_CF_TOKEN\" node_modules/.bin/opennextjs-cloudflare deploy)",
+      "Bash(npm list *)",
+      "Bash(npm info *)",
+      "Bash(npm run *)",
+      "Bash(npx tsc *)",
+      "Bash(npx next *)"
     ]
   }
 }
