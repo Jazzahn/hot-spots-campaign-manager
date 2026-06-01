@@ -38,6 +38,8 @@ export interface HotSpotData {
   faction: string;
   recommendedFor: "NEW_PLAYERS" | "EXPERIENCED" | "VETERAN_CAPSTONE";
   contracts: ContractTemplate[];
+  /** Side A can operate solo — opposing side is optional, not required for play */
+  soloSideA?: boolean;
 }
 
 export const HOT_SPOTS_DATA: HotSpotData[] = [
@@ -683,6 +685,7 @@ export const HOT_SPOTS_DATA: HotSpotData[] = [
     primaryTerrain: "Varied",
     faction: "Independent / Pirate",
     recommendedFor: "EXPERIENCED",
+    soloSideA: true,
     contracts: [
       {
         contractNumber: "PIRACY-A",

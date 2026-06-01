@@ -11,6 +11,7 @@ import { getSessionFromCookies } from "@/lib/auth/session";
 
 interface Props {
   params: Promise<{ campaignId: string; companyId: string }>;
+  searchParams: Promise<{ hotSpot?: string; side?: string }>;
 }
 
 const STATUS_VARIANT: Record<string, "success" | "warning" | "danger" | "outline" | "secondary"> = {
@@ -20,11 +21,13 @@ const STATUS_VARIANT: Record<string, "success" | "warning" | "danger" | "outline
   BROKEN: "danger",
 };
 
-export default async function ContractsPage({ params }: Props) {
-  const { campaignId, companyId } = await params;
+export default async function ContractsPage({ params, searchParams }: Props) {
+  const [{ campaignId, companyId }, sp] = await Promise.all([params, searchParams]);
   const [company, session] = await Promise.all([getCompanyForContracts(companyId), getSessionFromCookies()]);
   if (!company || company.campaignId !== campaignId) notFound();
   const canWrite = session.role === "CAMPAIGN_MANAGER" || session.userId === company.userId;
+  const initialHotSpot = sp.hotSpot;
+  const initialSide = (sp.side === "A" || sp.side === "B") ? sp.side : undefined;
 
   return (
     <div className="space-y-6">
@@ -33,7 +36,14 @@ export default async function ContractsPage({ params }: Props) {
           <h1 className="text-2xl font-bold">Contracts</h1>
           <p className="text-muted-foreground text-sm mt-1">Reputation: {company.reputation}</p>
         </div>
-        {canWrite && <AddContractForm companyId={companyId} currentScale={company.scale} />}
+        {canWrite && (
+          <AddContractForm
+            companyId={companyId}
+            currentScale={company.scale}
+            initialHotSpot={initialHotSpot}
+            initialSide={initialSide}
+          />
+        )}
       </div>
 
       {company.contracts.length === 0 ? (

@@ -25,7 +25,8 @@ export default function ContractActions({ contract, companyId: _companyId }: Pro
     if (!month) return;
     startTransition(async () => {
       const result = await collectMonthlyBasePay(contract.id, month);
-      alert(`Base Pay: +${result.basePay} SP\nMaintenance: -${result.maintenanceCost} SP\nShortfall: ${result.shortfall} SP`);
+      const netLabel = result.net >= 0 ? `Net Income: +${result.net}` : `Shortfall: ${result.net}`;
+      alert(`Base Pay: +${result.basePay} SP\nMaintenance: -${result.maintenanceCost} SP\n${netLabel} SP`);
     });
   }
 

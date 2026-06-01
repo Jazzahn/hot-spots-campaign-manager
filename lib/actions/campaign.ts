@@ -125,17 +125,20 @@ export async function getCampaignConflicts(campaignId: string) {
 
   return Array.from(byHotSpot.entries()).map(([hotSpot, entries]) => {
     const hsData = HOT_SPOTS_DATA.find((h) => h.planet === hotSpot || h.name === hotSpot) ?? null;
-    // Determine which side each contract is on by matching template names
     const withSides = entries.map((e) => {
-      const matchedTemplate = hsData?.contracts.find(
-        (c) => c.name === e.contractName || c.contractType === e.contractType
-      );
+      const matchedTemplate = hsData?.contracts.find((c) => c.name === e.contractName);
       return { ...e, side: matchedTemplate?.side ?? null };
     });
-    const sideA = withSides.find((e) => e.side === "A") ?? null;
-    const sideB = withSides.find((e) => e.side === "B") ?? null;
-    const opposingA = hsData?.contracts.find((c) => c.side === "A") ?? null;
-    const opposingB = hsData?.contracts.find((c) => c.side === "B") ?? null;
-    return { hotSpot, hsData, sideA, sideB, opposingA, opposingB };
+    const templateA = hsData?.contracts.find((c) => c.side === "A") ?? null;
+    const templateB = hsData?.contracts.find((c) => c.side === "B") ?? null;
+    return {
+      hotSpot,
+      hsData,
+      sideA: withSides.filter((e) => e.side === "A"),
+      sideB: withSides.filter((e) => e.side === "B"),
+      templateA,
+      templateB,
+      soloSideA: hsData?.soloSideA ?? false,
+    };
   });
 }

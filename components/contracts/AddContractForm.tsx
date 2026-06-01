@@ -13,12 +13,18 @@ import { HOT_SPOTS_DATA, type ContractTemplate } from "@/lib/constants/hot-spots
 interface Props {
   companyId: string;
   currentScale: number;
+  initialHotSpot?: string;
+  initialSide?: "A" | "B";
 }
 
-export default function AddContractForm({ companyId, currentScale }: Props) {
-  const [open, setOpen] = useState(false);
+export default function AddContractForm({ companyId, currentScale, initialHotSpot, initialSide }: Props) {
   const [isPending, startTransition] = useTransition();
-  const [selectedTemplate, setSelectedTemplate] = useState<ContractTemplate | null>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<ContractTemplate | null>(() => {
+    if (!initialHotSpot || !initialSide) return null;
+    const hs = HOT_SPOTS_DATA.find((h) => h.planet === initialHotSpot || h.name === initialHotSpot);
+    return hs?.contracts.find((c) => c.side === initialSide) ?? null;
+  });
+  const [open, setOpen] = useState(() => !!initialHotSpot && !!initialSide);
 
   function handleTemplateSelect(value: string) {
     if (!value) { setSelectedTemplate(null); return; }

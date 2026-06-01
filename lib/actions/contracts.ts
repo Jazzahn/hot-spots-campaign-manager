@@ -81,14 +81,14 @@ export async function collectMonthlyBasePay(contractId: string, month: number) {
   const scaleData = getScale(contract.scale);
   const maintenanceCost = scaleData.maintenanceCost;
   const basePay = Math.floor(maintenanceCost * (contract.basePayPct / 100));
-  const shortfall = maintenanceCost - basePay;
+  const net = basePay - maintenanceCost;
 
   if (basePay > 0) {
     await updateWarchest(contract.companyId, basePay, "COMBAT_PAY", `Base Pay (${contract.basePayPct}%)`, month, { contractId });
   }
   await updateWarchest(contract.companyId, -maintenanceCost, "MAINTENANCE", `Monthly Maintenance (Scale ${contract.scale})`, month, { contractId });
 
-  return { maintenanceCost, basePay, shortfall };
+  return { maintenanceCost, basePay, net };
 }
 
 export async function completeContract(contractId: string, success: boolean) {
@@ -138,6 +138,22 @@ export async function breakContract(contractId: string, escapeClause: boolean) {
   }
 
   const path = await getCompanyPath(contract.companyId);
+  revalidatePath(`${path}/contracts`);
+}
+
+export async function leaveConflict(contractId: string) {
+  const contract = await db.query.contracts.findFirst({
+    where: eq(contracts.id, contractId),
+    columns: { id: true, status: true, companyId: true },
+    with: { tracks: { columns: { id: true } } },
+  });
+  if (!contract) throw new Error("Contract not found");
+  if (contract.status !== "PENDING") throw new Error("Can only leave a pending contract");
+  if (contract.tracks.length > 0) throw new Error("Cannot leave a contract with tracks");
+
+  await db.delete(contracts).where(eq(contracts.id, contractId));
+  const path = await getCompanyPath(contract.companyId);
+  revalidatePath(path);
   revalidatePath(`${path}/contracts`);
 }
 
