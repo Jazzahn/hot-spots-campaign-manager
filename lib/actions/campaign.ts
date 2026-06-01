@@ -103,6 +103,9 @@ export async function getCampaignConflicts(campaignId: string) {
       contractName: contracts.contractName,
       contractType: contracts.contractType,
       status: contracts.status,
+      isReady: contracts.isReady,
+      conflictMonth: contracts.conflictMonth,
+      durationMonths: contracts.durationMonths,
       companyId: companies.id,
       companyName: companies.name,
       companyUserId: companies.userId,
@@ -131,14 +134,32 @@ export async function getCampaignConflicts(campaignId: string) {
       ...e,
       side: (e.contractName === templateA?.name ? "A" : e.contractName === templateB?.name ? "B" : null) as "A" | "B" | null,
     }));
+    const sideA = withSides.filter((e) => e.side === "A");
+    const sideB = withSides.filter((e) => e.side === "B");
+    const allEntries = [...sideA, ...sideB];
+    const isLocked = allEntries.some((e) => e.status === "ACTIVE");
+    const currentConflictMonth = isLocked
+      ? Math.max(...allEntries.filter((e) => e.status === "ACTIVE").map((e) => e.conflictMonth))
+      : 1;
+    const maxDurationMonths = isLocked
+      ? Math.max(...allEntries.filter((e) => e.status === "ACTIVE").map((e) => e.durationMonths))
+      : 0;
+    const readyCount = allEntries.filter((e) => e.isReady).length;
+    const currentMonthSchedule = hsData?.monthlySchedule?.find((m) => m.month === currentConflictMonth) ?? null;
     return {
       hotSpot,
       hsData,
-      sideA: withSides.filter((e) => e.side === "A"),
-      sideB: withSides.filter((e) => e.side === "B"),
+      sideA,
+      sideB,
       templateA,
       templateB,
       opposingSideOptional: templateB?.optional ?? false,
+      isLocked,
+      currentConflictMonth,
+      maxDurationMonths,
+      readyCount,
+      totalCount: allEntries.length,
+      currentMonthSchedule,
     };
   });
 }

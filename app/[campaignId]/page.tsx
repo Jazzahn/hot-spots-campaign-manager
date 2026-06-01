@@ -54,7 +54,9 @@ export default async function CampaignOverviewPage({ params }: Props) {
       <CampaignConflicts
         conflicts={conflicts}
         campaignId={campaignId}
+        campaignCurrentMonth={campaign.currentMonth}
         myCompanyId={myCompany?.id ?? null}
+        isManager={!!isManager}
       />
 
       {campaign.companies.length === 0 ? (

@@ -3,8 +3,7 @@
 import { useTransition } from "react";
 import type { Contract } from "@/types";
 import { Button } from "@/components/ui/button";
-import { activateContract, completeContract, breakContract } from "@/lib/actions/contracts";
-import { collectMonthlyBasePay } from "@/lib/actions/contracts";
+import { completeContract, breakContract } from "@/lib/actions/contracts";
 
 interface Props {
   contract: Contract;
@@ -13,22 +12,6 @@ interface Props {
 
 export default function ContractActions({ contract, companyId: _companyId }: Props) {
   const [isPending, startTransition] = useTransition();
-
-  function handleActivate() {
-    const month = Number(prompt("Start month number?", "1"));
-    if (!month) return;
-    startTransition(async () => { await activateContract(contract.id, month); });
-  }
-
-  function handleCollectPay() {
-    const month = Number(prompt("Month number to collect pay for?", "1"));
-    if (!month) return;
-    startTransition(async () => {
-      const result = await collectMonthlyBasePay(contract.id, month);
-      const netLabel = result.net >= 0 ? `Net Income: +${result.net}` : `Shortfall: ${result.net}`;
-      alert(`Base Pay: +${result.basePay} SP\nMaintenance: -${result.maintenanceCost} SP\n${netLabel} SP`);
-    });
-  }
 
   function handleComplete() {
     if (!confirm("Mark contract as completed successfully?")) return;
@@ -42,18 +25,15 @@ export default function ContractActions({ contract, companyId: _companyId }: Pro
 
   if (contract.status === "PENDING") {
     return (
-      <Button onClick={handleActivate} disabled={isPending}>
-        Activate Contract
-      </Button>
+      <div className="text-xs text-muted-foreground italic">
+        Ready up via the campaign overview to activate
+      </div>
     );
   }
 
   if (contract.status === "ACTIVE") {
     return (
       <div className="flex gap-2">
-        <Button variant="outline" onClick={handleCollectPay} disabled={isPending} size="sm">
-          Collect Monthly Pay
-        </Button>
         <Button variant="outline" onClick={handleComplete} disabled={isPending} size="sm">
           Complete Contract
         </Button>

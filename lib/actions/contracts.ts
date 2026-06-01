@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { contracts, companies } from "@/lib/schema";
-import { eq } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import type { CreateContractInput } from "@/types";
 import { updateWarchest } from "./company";
 import { getScale } from "@/lib/constants/scales";
@@ -41,6 +41,101 @@ export async function createContract(input: CreateContractInput) {
   const path = await getCompanyPath(input.companyId);
   revalidatePath(`${path}/contracts`);
   return contract;
+}
+
+export async function readyUpContract(contractId: string, campaignCurrentMonth: number) {
+  const contract = await db.query.contracts.findFirst({
+    where: eq(contracts.id, contractId),
+    columns: { id: true, companyId: true, hotSpot: true, status: true, scale: true, transportPct: true, durationMonths: true },
+    with: { company: { columns: { campaignId: true } } },
+  });
+  if (!contract) throw new Error("Contract not found");
+  if (contract.status !== "PENDING") throw new Error("Contract is not pending");
+
+  await db.update(contracts).set({ isReady: true, updatedAt: new Date() }).where(eq(contracts.id, contractId));
+
+  // Check if ALL pending contracts at this hot spot in this campaign are now ready
+  const allAtHotSpot = await db.query.contracts.findMany({
+    where: and(
+      eq(contracts.hotSpot, contract.hotSpot),
+      inArray(contracts.status, ["PENDING"]),
+    ),
+    with: { company: { columns: { campaignId: true } } },
+  });
+
+  const forThisCampaign = allAtHotSpot.filter(
+    (c) => c.company?.campaignId === contract.company?.campaignId
+  );
+
+  // Re-read to get updated isReady states (including the one we just set)
+  const updated = await db.query.contracts.findMany({
+    where: and(
+      eq(contracts.hotSpot, contract.hotSpot),
+      inArray(contracts.status, ["PENDING"]),
+    ),
+    with: { company: { columns: { campaignId: true } } },
+  });
+  const forThisCampaignUpdated = updated.filter(
+    (c) => c.company?.campaignId === contract.company?.campaignId
+  );
+
+  const allReady = forThisCampaignUpdated.length > 0 && forThisCampaignUpdated.every((c) => c.isReady);
+
+  if (allReady) {
+    // Activate all contracts at this hot spot simultaneously
+    for (const c of forThisCampaignUpdated) {
+      const scaleData = getScale(c.scale);
+      const transportCost = Math.floor(scaleData.transportCost * (c.transportPct / 100));
+      await db.update(contracts).set({
+        status: "ACTIVE",
+        startMonth: campaignCurrentMonth,
+        endMonth: campaignCurrentMonth + c.durationMonths - 1,
+        conflictMonth: 1,
+        updatedAt: new Date(),
+      }).where(eq(contracts.id, c.id));
+      if (transportCost > 0) {
+        await updateWarchest(c.companyId, -transportCost, "TRANSPORT", "Transport to contract", campaignCurrentMonth, { contractId: c.id });
+      }
+    }
+  }
+
+  const path = await getCompanyPath(contract.companyId);
+  revalidatePath(path);
+  revalidatePath(`${path}/contracts`);
+  revalidatePath(`/${contract.company?.campaignId}`);
+}
+
+export async function advanceConflictMonth(hotSpot: string, campaignId: string, campaignCurrentMonth: number) {
+  // Find all active contracts at this hot spot in this campaign
+  const allActive = await db.query.contracts.findMany({
+    where: eq(contracts.status, "ACTIVE"),
+    with: { company: { columns: { campaignId: true, id: true } } },
+  });
+  const forThisConflict = allActive.filter(
+    (c) => c.hotSpot === hotSpot && c.company?.campaignId === campaignId
+  );
+  if (forThisConflict.length === 0) throw new Error("No active contracts found for this conflict");
+
+  // Collect monthly pay for all companies and advance conflict month
+  for (const c of forThisConflict) {
+    const scaleData = getScale(c.scale);
+    const maintenanceCost = scaleData.maintenanceCost;
+    const basePay = Math.floor(maintenanceCost * (c.basePayPct / 100));
+
+    if (basePay > 0) {
+      await updateWarchest(c.companyId, basePay, "COMBAT_PAY", `Base Pay — Month ${c.conflictMonth} (${c.basePayPct}%)`, campaignCurrentMonth, { contractId: c.id });
+    }
+    await updateWarchest(c.companyId, -maintenanceCost, "MAINTENANCE", `Maintenance — Month ${c.conflictMonth} (Scale ${c.scale})`, campaignCurrentMonth, { contractId: c.id });
+    await db.update(contracts)
+      .set({ conflictMonth: c.conflictMonth + 1, updatedAt: new Date() })
+      .where(eq(contracts.id, c.id));
+  }
+
+  revalidatePath(`/${campaignId}`);
+  for (const c of forThisConflict) {
+    revalidatePath(`/${campaignId}/${c.companyId}/contracts`);
+    revalidatePath(`/${campaignId}/${c.companyId}`);
+  }
 }
 
 export async function activateContract(contractId: string, startMonth: number) {

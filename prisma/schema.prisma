@@ -238,6 +238,8 @@ model Contract {
   startMonth   Int?
   endMonth     Int?
   notes        String?
+  isReady      Boolean @default(false)
+  conflictMonth Int    @default(1)
 
   tracks Track[]
 

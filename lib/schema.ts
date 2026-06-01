@@ -143,6 +143,8 @@ export const contracts = pgTable("Contract", {
   startMonth: integer("startMonth"),
   endMonth: integer("endMonth"),
   notes: text("notes"),
+  isReady: boolean("isReady").notNull().default(false),
+  conflictMonth: integer("conflictMonth").notNull().default(1),
   createdAt: timestamp("createdAt", { precision: 3 }).notNull().defaultNow(),
   updatedAt: timestamp("updatedAt", { precision: 3 }).notNull().defaultNow(),
 });
