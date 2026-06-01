@@ -1,22 +1,7 @@
 import { getIronSession } from "iron-session";
 import { cookies } from "next/headers";
-import type { UserRole } from "@/lib/schema";
-
-export interface SessionData {
-  userId: string;
-  callsign: string;
-  role: UserRole;
-}
-
-export const sessionOptions = {
-  password: process.env.IRON_SESSION_SECRET ?? "change-me-at-least-32-characters-long",
-  cookieName: "hs-session",
-  cookieOptions: {
-    secure: process.env.NODE_ENV === "production",
-    httpOnly: true,
-    sameSite: "lax" as const,
-  },
-};
+import { sessionOptions } from "@/lib/auth/session-options";
+import type { SessionData } from "@/lib/auth/session-options";
 
 export async function getSessionFromCookies() {
   return getIronSession<SessionData>(await cookies(), sessionOptions);

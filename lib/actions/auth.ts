@@ -7,7 +7,8 @@ import { db } from "@/lib/db";
 import { users, campaigns, companies } from "@/lib/schema";
 import { eq, isNull, count } from "drizzle-orm";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
-import { sessionOptions, type SessionData } from "@/lib/auth/session";
+import { sessionOptions } from "@/lib/auth/session-options";
+import type { SessionData } from "@/lib/auth/session-options";
 
 export async function loginAction(callsign: string, passphrase: string) {
   const user = await db.query.users.findFirst({

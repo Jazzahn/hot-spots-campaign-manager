@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getIronSession } from "iron-session";
-import type { SessionData } from "@/lib/auth/session";
-import { sessionOptions } from "@/lib/auth/session";
+import type { SessionData } from "@/lib/auth/session-options";
+import { sessionOptions } from "@/lib/auth/session-options";
 
 const PUBLIC_PATHS = ["/login", "/join", "/admin"];
 
