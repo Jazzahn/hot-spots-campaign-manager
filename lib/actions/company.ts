@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { companies, transactions, units, pilots, contracts, campaigns } from "@/lib/schema";
-import { eq, asc, desc } from "drizzle-orm";
+import { eq, asc, desc, and, sum } from "drizzle-orm";
 import type { CreateCompanyInput, TransactionCategory } from "@/types";
 import { getSessionFromCookies } from "@/lib/auth/session";
 
@@ -157,7 +157,7 @@ export async function updateWarchest(
   category: TransactionCategory,
   description: string,
   month: number,
-  extra?: { contractId?: string; trackId?: string }
+  extra?: { contractId?: string; trackId?: string; isPending?: boolean }
 ) {
   const company = await db.query.companies.findFirst({
     where: eq(companies.id, companyId),
@@ -165,25 +165,47 @@ export async function updateWarchest(
   });
   if (!company) throw new Error("Company not found");
 
-  const newBalance = company.warchest + amount;
+  if (extra?.isPending) {
+    // Compute projected balance: committed warchest + sum of existing pending + this amount
+    const [pendingSum] = await db
+      .select({ total: sum(transactions.amount) })
+      .from(transactions)
+      .where(and(eq(transactions.companyId, companyId), eq(transactions.isPending, true)));
+    const existingPending = Number(pendingSum?.total ?? 0);
+    const projectedBalance = company.warchest + existingPending + amount;
 
-  await db.batch([
-    db.update(companies)
-      .set({ warchest: newBalance, updatedAt: new Date() })
-      .where(eq(companies.id, companyId)),
-    db.insert(transactions).values({
+    await db.insert(transactions).values({
       id: crypto.randomUUID(),
       companyId,
       month,
       category,
       amount,
       description,
-      runningBalance: newBalance,
+      runningBalance: projectedBalance,
+      isPending: true,
       contractId: extra?.contractId,
       trackId: extra?.trackId,
-    }),
-  ]);
-
-  revalidatePath(`/${company.campaignId}/${companyId}`);
-  revalidatePath(`/${company.campaignId}/${companyId}/ledger`);
+    });
+  } else {
+    const newBalance = company.warchest + amount;
+    await db.batch([
+      db.update(companies)
+        .set({ warchest: newBalance, updatedAt: new Date() })
+        .where(eq(companies.id, companyId)),
+      db.insert(transactions).values({
+        id: crypto.randomUUID(),
+        companyId,
+        month,
+        category,
+        amount,
+        description,
+        runningBalance: newBalance,
+        isPending: false,
+        contractId: extra?.contractId,
+        trackId: extra?.trackId,
+      }),
+    ]);
+    revalidatePath(`/${company.campaignId}/${companyId}`);
+    revalidatePath(`/${company.campaignId}/${companyId}/ledger`);
+  }
 }

@@ -26,7 +26,7 @@ export function formatInGameDate(
   const totalIndex = (startMonth - 1) + (currentMonth - 1);
   const year = startYear + Math.floor(totalIndex / 12);
   const month = IN_GAME_MONTHS[totalIndex % 12];
-  return `${month} ${year}`;
+  return `${month} ${year} (Month ${currentMonth})`;
 }
 
 const LOWERCASE_CONTRACT_WORDS = new Set(["of"]);

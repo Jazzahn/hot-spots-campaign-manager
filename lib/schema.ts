@@ -147,6 +147,8 @@ export const contracts = pgTable("Contract", {
   notes: text("notes"),
   isReady: boolean("isReady").notNull().default(false),
   conflictMonth: integer("conflictMonth").notNull().default(1),
+  companyMonthReady: boolean("companyMonthReady").notNull().default(false),
+  conflictAdvancedThisMonth: boolean("conflictAdvancedThisMonth").notNull().default(false),
   createdAt: timestamp("createdAt", { precision: 3 }).notNull().defaultNow(),
   updatedAt: timestamp("updatedAt", { precision: 3 }).notNull().defaultNow(),
 });
@@ -210,6 +212,7 @@ export const transactions = pgTable("Transaction", {
   amount: integer("amount").notNull(),
   description: text("description").notNull(),
   runningBalance: integer("runningBalance").notNull(),
+  isPending: boolean("isPending").notNull().default(false),
   contractId: text("contractId"),
   trackId: text("trackId"),
   createdAt: timestamp("createdAt", { precision: 3 }).notNull().defaultNow(),

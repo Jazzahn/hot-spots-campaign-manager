@@ -10,6 +10,7 @@ import EditCampaignDateForm from "@/components/EditCampaignDateForm";
 import NewCompanyForm from "@/components/NewCompanyForm";
 import DeleteCompanyButton from "@/components/DeleteCompanyButton";
 import CopyInviteKey from "@/components/auth/CopyInviteKey";
+import AdvanceCampaignMonthButton from "@/components/AdvanceCampaignMonthButton";
 
 interface Props {
   params: Promise<{ campaignId: string }>;
@@ -44,11 +45,16 @@ export default async function CampaignOverviewPage({ params }: Props) {
               {formatInGameDate(campaign.currentMonth, campaign.inGameStartYear, campaign.inGameStartMonth)}
             </span>
             {isManager && (
-              <EditCampaignDateForm
-                campaignId={campaignId}
-                currentStartYear={campaign.inGameStartYear}
-                currentStartMonth={campaign.inGameStartMonth}
-              />
+              <>
+                <EditCampaignDateForm
+                  campaignId={campaignId}
+                  currentStartYear={campaign.inGameStartYear}
+                  currentStartMonth={campaign.inGameStartMonth}
+                />
+                {conflicts.filter((c) => c.isLocked).length === 0 && (
+                  <AdvanceCampaignMonthButton campaignId={campaignId} />
+                )}
+              </>
             )}
             {campaign.background && (
               <>

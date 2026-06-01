@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import LeaveConflictButton from "@/components/contracts/LeaveConflictButton";
 import ReadyUpButton from "@/components/contracts/ReadyUpButton";
-import AdvanceMonthButton from "@/components/contracts/AdvanceMonthButton";
+import AdvanceCompanyMonthButton from "@/components/contracts/AdvanceCompanyMonthButton";
 import CancelContractButton from "@/components/contracts/CancelContractButton";
 import type { getCampaignConflicts } from "@/lib/actions/campaign";
 import { formatContractType } from "@/lib/utils";
@@ -222,26 +222,24 @@ function ActiveConflictCard({
           </div>
         )}
 
-        {/* My company's contract link */}
+        {/* My company's actions */}
         {myEntry && (
-          <div className="flex items-center justify-between pt-1">
+          <div className="flex items-center justify-between gap-2 pt-1">
             <Button variant="ghost" size="sm" asChild className="text-xs h-7">
-              <Link href={`/${campaignId}/${myEntry.companyId}/contracts`}>
+              <Link href={`/${campaignId}/${myEntry.companyId}/contracts/${myEntry.contractId}`}>
                 View my contract →
               </Link>
             </Button>
+            {myEntry.status === "ACTIVE" && (
+              <AdvanceCompanyMonthButton
+                contractId={myEntry.contractId}
+                campaignCurrentMonth={campaignCurrentMonth}
+                conflictMonth={c.currentConflictMonth}
+                durationMonths={c.maxDurationMonths}
+                companyMonthReady={myEntry.companyMonthReady}
+              />
+            )}
           </div>
-        )}
-
-        {/* Campaign Manager: advance month */}
-        {isManager && (
-          <AdvanceMonthButton
-            hotSpot={c.hotSpot}
-            campaignId={campaignId}
-            campaignCurrentMonth={campaignCurrentMonth}
-            currentConflictMonth={c.currentConflictMonth}
-            maxDurationMonths={c.maxDurationMonths}
-          />
         )}
       </CardContent>
     </Card>
@@ -279,6 +277,14 @@ function SideRow({
               <Badge variant={e.status === "ACTIVE" ? "success" : "warning"} className="text-xs">
                 {e.isReady && e.status === "PENDING" ? "Ready" : e.status}
               </Badge>
+              {e.status === "ACTIVE" && (
+                <Badge
+                  variant={e.companyMonthReady ? "warning" : "outline"}
+                  className="text-xs"
+                >
+                  {e.companyMonthReady ? "⏳ Month ready" : "Awaiting advance"}
+                </Badge>
+              )}
               {isManager && (
                 <CancelContractButton
                   contractId={e.contractId}

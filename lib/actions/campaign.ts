@@ -2,8 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { campaigns, companies, contracts } from "@/lib/schema";
-import { eq, count, desc, sql, and, inArray } from "drizzle-orm";
+import { campaigns, companies, contracts, transactions } from "@/lib/schema";
+import { eq, count, desc, sql, and, inArray, sum } from "drizzle-orm";
 import { HOT_SPOTS_DATA } from "@/lib/constants/hot-spots-data";
 import type { CreateCampaignInput } from "@/types";
 import { getSessionFromCookies } from "@/lib/auth/session";
@@ -111,6 +111,24 @@ export async function advanceMonth(campaignId: string) {
   revalidatePath(`/${campaignId}`);
 }
 
+// Manual advance for campaigns with no active conflicts (no pending transactions to commit)
+export async function advanceCampaignMonthManual(campaignId: string) {
+  const activeContracts = await db.query.contracts.findMany({
+    where: eq(contracts.status, "ACTIVE"),
+    with: { company: { columns: { campaignId: true } } },
+  });
+  const campaignActive = activeContracts.filter((c) => c.company?.campaignId === campaignId);
+  if (campaignActive.length > 0) {
+    throw new Error("Cannot manually advance: there are active conflicts. Players must advance their own months.");
+  }
+
+  await db
+    .update(campaigns)
+    .set({ currentMonth: sql`${campaigns.currentMonth} + 1`, updatedAt: new Date() })
+    .where(eq(campaigns.id, campaignId));
+  revalidatePath(`/${campaignId}`);
+}
+
 export async function getCampaignConflicts(campaignId: string) {
   const rows = await db
     .select({
@@ -122,6 +140,8 @@ export async function getCampaignConflicts(campaignId: string) {
       isReady: contracts.isReady,
       conflictMonth: contracts.conflictMonth,
       durationMonths: contracts.durationMonths,
+      companyMonthReady: contracts.companyMonthReady,
+      conflictAdvancedThisMonth: contracts.conflictAdvancedThisMonth,
       companyId: companies.id,
       companyName: companies.name,
       companyUserId: companies.userId,

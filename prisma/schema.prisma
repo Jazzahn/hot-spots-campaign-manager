@@ -242,6 +242,8 @@ model Contract {
   notes        String?
   isReady      Boolean @default(false)
   conflictMonth Int    @default(1)
+  companyMonthReady         Boolean @default(false)
+  conflictAdvancedThisMonth Boolean @default(false)
 
   tracks Track[]
 
@@ -325,6 +327,7 @@ model Transaction {
   amount         Int
   description    String
   runningBalance Int
+  isPending      Boolean @default(false)
   contractId     String?
   trackId        String?
 

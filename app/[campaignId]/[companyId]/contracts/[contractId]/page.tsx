@@ -7,9 +7,11 @@ import { formatSP, formatContractType } from "@/lib/utils";
 import { UnitStatusBadge } from "@/components/force/UnitStatusBadge";
 import ContractActions from "@/components/contracts/ContractActions";
 import AddTrackForm from "@/components/tracks/AddTrackForm";
+import AdvanceCompanyMonthButton from "@/components/contracts/AdvanceCompanyMonthButton";
 import { getContractDetail } from "@/lib/actions/contracts";
 import { getSessionFromCookies } from "@/lib/auth/session";
 import { canWriteCompany } from "@/lib/auth/access";
+import { getCampaign } from "@/lib/actions/campaign";
 
 interface Props {
   params: Promise<{ campaignId: string; companyId: string; contractId: string }>;
@@ -32,8 +34,13 @@ const RESULT_VARIANT: Record<string, "success" | "warning" | "danger" | "seconda
 export default async function ContractDetailPage({ params }: Props) {
   const { campaignId, companyId, contractId } = await params;
 
-  const [contract, session] = await Promise.all([getContractDetail(contractId), getSessionFromCookies()]);
+  const [contract, session, campaign] = await Promise.all([
+    getContractDetail(contractId),
+    getSessionFromCookies(),
+    getCampaign(campaignId),
+  ]);
   if (!contract || contract.companyId !== companyId || contract.company.campaignId !== campaignId) notFound();
+  if (!campaign) notFound();
 
   const company = contract.company;
   const canWrite = canWriteCompany(session, company.userId);
@@ -56,7 +63,18 @@ export default async function ContractDetailPage({ params }: Props) {
             {contract.hotSpot} · {formatContractType(contract.contractType)} · Scale {contract.scale}
           </p>
         </div>
-        {canWrite && <ContractActions contract={contract} companyId={companyId} isManager={isManager} />}
+        <div className="flex items-center gap-2">
+          {canWrite && contract.status === "ACTIVE" && (
+            <AdvanceCompanyMonthButton
+              contractId={contract.id}
+              campaignCurrentMonth={campaign.currentMonth}
+              conflictMonth={contract.conflictMonth}
+              durationMonths={contract.durationMonths}
+              companyMonthReady={contract.companyMonthReady}
+            />
+          )}
+          {canWrite && <ContractActions contract={contract} companyId={companyId} isManager={isManager} />}
+        </div>
       </div>
 
       <Card>

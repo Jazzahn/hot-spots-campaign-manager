@@ -38,6 +38,10 @@ export default async function LedgerPage({ params }: Props) {
 
   const months = Object.keys(byMonth).map(Number).sort((a, b) => b - a);
   const inDebt = company.warchest < 0;
+  const pendingNet = company.transactions
+    .filter((t) => t.isPending)
+    .reduce((s, t) => s + t.amount, 0);
+  const hasPending = pendingNet !== 0;
 
   return (
     <div className="space-y-6">
@@ -46,10 +50,17 @@ export default async function LedgerPage({ params }: Props) {
           <h1 className="text-2xl font-bold">Financial Ledger</h1>
           <p className="text-muted-foreground text-sm mt-1">{company.transactions.length} transactions</p>
         </div>
-        <div className={`text-right ${inDebt ? "text-red-400" : "text-green-400"}`}>
+        <div className="text-right">
           <p className="text-xs text-muted-foreground">Current Warchest</p>
-          <p className="text-2xl font-bold">{formatSP(company.warchest)}</p>
-          {inDebt && <p className="text-xs">⚠ In Debt</p>}
+          <p className={`text-2xl font-bold ${inDebt ? "text-red-400" : "text-green-400"}`}>
+            {formatSP(company.warchest)}
+          </p>
+          {inDebt && <p className="text-xs text-red-400">⚠ In Debt</p>}
+          {hasPending && (
+            <p className={`text-xs mt-0.5 ${pendingNet >= 0 ? "text-yellow-400" : "text-yellow-500"}`}>
+              {pendingNet >= 0 ? "+" : ""}{formatSP(pendingNet)} pending
+            </p>
+          )}
         </div>
       </div>
 
@@ -78,18 +89,26 @@ export default async function LedgerPage({ params }: Props) {
                 <CardContent>
                   <div className="space-y-1">
                     {txs.map((tx) => (
-                      <div key={tx.id} className="flex items-center justify-between text-sm py-1.5 border-b border-border/50 last:border-0">
+                      <div
+                        key={tx.id}
+                        className={`flex items-center justify-between text-sm py-1.5 border-b border-border/50 last:border-0 ${tx.isPending ? "opacity-60" : ""}`}
+                      >
                         <div className="flex items-center gap-2">
                           <Badge variant="secondary" className="text-xs shrink-0">
                             {CATEGORY_LABELS[tx.category] ?? tx.category}
                           </Badge>
+                          {tx.isPending && (
+                            <Badge variant="warning" className="text-xs shrink-0">PENDING</Badge>
+                          )}
                           <span className="text-muted-foreground">{tx.description}</span>
                         </div>
                         <div className="flex items-center gap-6 shrink-0 ml-4">
                           <span className={`font-medium w-28 text-right ${tx.amount >= 0 ? "text-green-400" : "text-red-400"}`}>
                             {tx.amount >= 0 ? "+" : ""}{formatSP(tx.amount)}
                           </span>
-                          <span className="text-muted-foreground w-28 text-right">{formatSP(tx.runningBalance)}</span>
+                          <span className={`w-28 text-right ${tx.isPending ? "text-yellow-500/70" : "text-muted-foreground"}`}>
+                            {tx.isPending ? "~" : ""}{formatSP(tx.runningBalance)}
+                          </span>
                         </div>
                       </div>
                     ))}
