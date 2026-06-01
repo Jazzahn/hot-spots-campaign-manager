@@ -159,3 +159,6 @@ misc/
 .wrangler
 .dev.vars*
 !.dev.vars.example
+
+# Claude Code — local settings may contain secrets (API tokens, etc.)
+.claude/settings.local.json
