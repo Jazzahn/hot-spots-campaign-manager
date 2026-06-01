@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getCampaign } from "@/lib/actions/campaign";
+import { getCampaign, getCampaignConflicts } from "@/lib/actions/campaign";
 import { getSessionFromCookies } from "@/lib/auth/session";
+import CampaignConflicts from "@/components/contracts/CampaignConflicts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatSP } from "@/lib/utils";
@@ -15,10 +16,17 @@ interface Props {
 
 export default async function CampaignOverviewPage({ params }: Props) {
   const { campaignId } = await params;
-  const [campaign, session] = await Promise.all([getCampaign(campaignId), getSessionFromCookies()]);
+  const [campaign, session, conflicts] = await Promise.all([
+    getCampaign(campaignId),
+    getSessionFromCookies(),
+    getCampaignConflicts(campaignId),
+  ]);
   if (!campaign) notFound();
 
   const isManager = session.userId && session.userId === campaign.managedById;
+  const myCompany = session.userId
+    ? campaign.companies.find((c) => c.userId === session.userId) ?? null
+    : null;
 
   return (
     <div className="space-y-8">
@@ -42,6 +50,12 @@ export default async function CampaignOverviewPage({ params }: Props) {
         </div>
         <NewCompanyForm campaignId={campaignId} />
       </div>
+
+      <CampaignConflicts
+        conflicts={conflicts}
+        campaignId={campaignId}
+        myCompanyId={myCompany?.id ?? null}
+      />
 
       {campaign.companies.length === 0 ? (
         <Card className="text-center py-16">

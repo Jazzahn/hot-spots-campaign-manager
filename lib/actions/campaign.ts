@@ -2,8 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { campaigns, companies } from "@/lib/schema";
-import { eq, count, desc, sql } from "drizzle-orm";
+import { campaigns, companies, contracts } from "@/lib/schema";
+import { eq, count, desc, sql, and, inArray } from "drizzle-orm";
+import { HOT_SPOTS_DATA } from "@/lib/constants/hot-spots-data";
 import type { CreateCampaignInput } from "@/types";
 import { getSessionFromCookies } from "@/lib/auth/session";
 
@@ -92,4 +93,49 @@ export async function advanceMonth(campaignId: string) {
     .set({ currentMonth: sql`${campaigns.currentMonth} + 1`, updatedAt: new Date() })
     .where(eq(campaigns.id, campaignId));
   revalidatePath(`/${campaignId}`);
+}
+
+export async function getCampaignConflicts(campaignId: string) {
+  const rows = await db
+    .select({
+      contractId: contracts.id,
+      hotSpot: contracts.hotSpot,
+      contractName: contracts.contractName,
+      contractType: contracts.contractType,
+      status: contracts.status,
+      companyId: companies.id,
+      companyName: companies.name,
+      companyUserId: companies.userId,
+    })
+    .from(contracts)
+    .innerJoin(companies, eq(contracts.companyId, companies.id))
+    .where(
+      and(
+        eq(companies.campaignId, campaignId),
+        inArray(contracts.status, ["ACTIVE", "PENDING"])
+      )
+    );
+
+  const byHotSpot = new Map<string, typeof rows>();
+  for (const row of rows) {
+    const list = byHotSpot.get(row.hotSpot) ?? [];
+    list.push(row);
+    byHotSpot.set(row.hotSpot, list);
+  }
+
+  return Array.from(byHotSpot.entries()).map(([hotSpot, entries]) => {
+    const hsData = HOT_SPOTS_DATA.find((h) => h.planet === hotSpot || h.name === hotSpot) ?? null;
+    // Determine which side each contract is on by matching template names
+    const withSides = entries.map((e) => {
+      const matchedTemplate = hsData?.contracts.find(
+        (c) => c.name === e.contractName || c.contractType === e.contractType
+      );
+      return { ...e, side: matchedTemplate?.side ?? null };
+    });
+    const sideA = withSides.find((e) => e.side === "A") ?? null;
+    const sideB = withSides.find((e) => e.side === "B") ?? null;
+    const opposingA = hsData?.contracts.find((c) => c.side === "A") ?? null;
+    const opposingB = hsData?.contracts.find((c) => c.side === "B") ?? null;
+    return { hotSpot, hsData, sideA, sideB, opposingA, opposingB };
+  });
 }

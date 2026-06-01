@@ -54,16 +54,16 @@ export async function joinCampaignAction(
   const userId = crypto.randomUUID();
   const companyId = crypto.randomUUID();
 
-  await db.transaction(async (tx) => {
-    await tx.insert(users).values({ id: userId, callsign, passHash, role: "PLAYER" });
-    await tx.insert(companies).values({
+  await db.batch([
+    db.insert(users).values({ id: userId, callsign, passHash, role: "PLAYER" }),
+    db.insert(companies).values({
       id: companyId,
       campaignId: campaign.id,
       userId,
       name: companyName,
       updatedAt: new Date(),
-    });
-  });
+    }),
+  ]);
 
   const session = await getIronSession<SessionData>(await cookies(), sessionOptions);
   session.userId = userId;
