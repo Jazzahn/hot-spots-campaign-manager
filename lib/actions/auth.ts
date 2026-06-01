@@ -1,14 +1,11 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { cookies } from "next/headers";
-import { getIronSession } from "iron-session";
 import { db } from "@/lib/db";
 import { users, campaigns, companies } from "@/lib/schema";
-import { eq, isNull, count } from "drizzle-orm";
+import { eq, isNull } from "drizzle-orm";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
-import { sessionOptions } from "@/lib/auth/session-options";
-import type { SessionData } from "@/lib/auth/session-options";
+import { getSessionFromCookies } from "@/lib/auth/session";
 
 export async function loginAction(callsign: string, passphrase: string) {
   const user = await db.query.users.findFirst({
@@ -19,7 +16,7 @@ export async function loginAction(callsign: string, passphrase: string) {
     return { error: "Invalid callsign or passphrase" };
   }
 
-  const session = await getIronSession<SessionData>(await cookies(), sessionOptions);
+  const session = await getSessionFromCookies();
   session.userId = user.id;
   session.callsign = user.callsign;
   session.role = user.role;
@@ -29,7 +26,7 @@ export async function loginAction(callsign: string, passphrase: string) {
 }
 
 export async function logoutAction() {
-  const session = await getIronSession<SessionData>(await cookies(), sessionOptions);
+  const session = await getSessionFromCookies();
   session.destroy();
   redirect("/login");
 }
@@ -65,7 +62,7 @@ export async function joinCampaignAction(
     }),
   ]);
 
-  const session = await getIronSession<SessionData>(await cookies(), sessionOptions);
+  const session = await getSessionFromCookies();
   session.userId = userId;
   session.callsign = callsign;
   session.role = "PLAYER";
@@ -88,26 +85,19 @@ export async function createManagerAction(
   });
   if (existing) return { error: "Callsign already taken" };
 
-  const [{ managerCount }] = await db
-    .select({ managerCount: count() })
-    .from(users)
-    .where(eq(users.role, "CAMPAIGN_MANAGER"));
-
   const passHash = await hashPassword(passphrase);
   const userId = crypto.randomUUID();
 
   await db.insert(users).values({ id: userId, callsign, passHash, role: "CAMPAIGN_MANAGER" });
 
-  if (Number(managerCount) === 0) {
-    await db
-      .update(campaigns)
-      .set({ managedById: userId, updatedAt: new Date() })
-      .where(isNull(campaigns.managedById));
-    await db
-      .update(companies)
-      .set({ userId, updatedAt: new Date() })
-      .where(isNull(companies.userId));
-  }
+  await db
+    .update(campaigns)
+    .set({ managedById: userId, updatedAt: new Date() })
+    .where(isNull(campaigns.managedById));
+  await db
+    .update(companies)
+    .set({ userId, updatedAt: new Date() })
+    .where(isNull(companies.userId));
 
   return { success: true, callsign };
 }

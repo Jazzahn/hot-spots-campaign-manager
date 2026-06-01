@@ -4,23 +4,20 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import LeaveConflictButton from "@/components/contracts/LeaveConflictButton";
 import type { getCampaignConflicts } from "@/lib/actions/campaign";
+import { formatContractType } from "@/lib/utils";
 
 type Conflict = Awaited<ReturnType<typeof getCampaignConflicts>>[number];
 type ConflictEntry = Conflict["sideA"][number];
 
-interface Props {
+export default function CampaignConflicts({
+  conflicts,
+  campaignId,
+  myCompanyId,
+}: {
   conflicts: Conflict[];
   campaignId: string;
   myCompanyId: string | null;
-}
-
-const CONTRACT_TYPE_LABELS: Record<string, string> = {
-  RAID: "Raid", EXPEDITION: "Expedition", PIRATE_HUNT: "Pirate Hunt",
-  GARRISON: "Garrison", INVASION: "Invasion", RETAINER: "Retainer",
-  ACTS_OF_PIRACY: "Acts of Piracy",
-};
-
-export default function CampaignConflicts({ conflicts, campaignId, myCompanyId }: Props) {
+}) {
   if (conflicts.length === 0) return null;
 
   return (
@@ -55,7 +52,7 @@ export default function CampaignConflicts({ conflicts, campaignId, myCompanyId }
               </CardHeader>
               <CardContent className="space-y-3 pb-4">
                 <SideRow label="Side A" template={c.templateA} companies={c.sideA} />
-                <SideRow label="Side B" template={c.templateB} companies={c.sideB} optional={c.soloSideA} />
+                <SideRow label="Side B" template={c.templateB} companies={c.sideB} optional={c.opposingSideOptional} />
 
                 {myCompanyId && !isLocked && (
                   <div className="flex gap-2 pt-1">
@@ -105,7 +102,7 @@ function SideRow({
           <span className="text-xs text-muted-foreground flex items-center gap-1">
             <span className={optional ? "text-muted-foreground/50" : "text-green-500/70"}>●</span>
             {template
-              ? `${template.name} (${CONTRACT_TYPE_LABELS[template.contractType] ?? template.contractType})${optional ? " — optional" : " — open"}`
+              ? `${template.name} (${formatContractType(template.contractType)})${optional ? " — optional" : " — open"}`
               : optional ? "Optional" : "Open"}
           </span>
         ) : (

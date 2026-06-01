@@ -10,9 +10,11 @@ A BattleTech **Hot Spots** mercenary campaign tracker built with Next.js 15 and 
 |---|---|
 | Framework | Next.js 15 (App Router), React 19 |
 | Database | PostgreSQL via Neon (serverless HTTP) |
-| ORM | Prisma 7 with `@prisma/adapter-neon` |
+| ORM | Drizzle ORM (`drizzle-orm/neon-http`) — schema in `lib/schema.ts` |
+| Migrations | Prisma (`prisma migrate`) — schema in `prisma/schema.prisma` |
 | UI | Radix UI primitives + Tailwind CSS (shadcn-style components in `components/ui/`) |
-| Deployment | Cloudflare Pages via `@cloudflare/next-on-pages` |
+| Auth | iron-session (encrypted cookie) + PBKDF2 passwords via Web Crypto |
+| Deployment | Cloudflare Workers via `@opennextjs/cloudflare` + wrangler |
 | Language | TypeScript (strict) |
 
 ## Data Model Hierarchy
@@ -65,7 +67,7 @@ lib/
   calculations/             # Pure game-rule math
   constants/
     scales.ts               # Force scale limits & costs
-  db.ts                     # Prisma singleton (Neon adapter)
+  db.ts                     # Drizzle singleton (lazy-init Neon HTTP adapter)
   utils.ts                  # formatSP, formatBV, cn()
 prisma/
   schema.prisma             # Single source of truth for all models
@@ -82,7 +84,7 @@ types/
 
 **Client components are narrow.** Mark `"use client"` only when you need interactivity (forms, dialogs, transitions). Use `useTransition` + server actions for pending states.
 
-**Prisma transactions for atomicity.** Any operation that modifies both a model and creates a `Transaction` record (warchest changes) must use `prisma.$transaction([...])`. Always call `revalidatePath()` after mutations.
+**`db.batch()` for atomicity.** Any operation that modifies multiple tables atomically must use `db.batch([...])`. The Neon HTTP driver does not support interactive transactions. Always call `revalidatePath()` after mutations.
 
 **`@` alias for all imports.** Use `@/lib/...`, `@/components/...`, `@/types`, etc. Never use relative paths that traverse upward.
 
@@ -96,7 +98,7 @@ types/
 - **Named Pilots (max 4)** — earn Skill Points (spEarned) from tracks; invested into gunnery, piloting, edge tokens, or edge abilities.
 - **Tracks** — individual missions within a contract. Each track records unit damage, pilot performance, salvage, and combat pay.
 - **Warchest** — running balance per Company. Every change creates a `Transaction` row. The ledger is append-only; never delete transactions.
-- **Enums** — all game-state enums live in `prisma/schema.prisma` and are imported from `@prisma/client`. Never redefine them in TypeScript.
+- **Enums** — all game-state enums are defined as `pgEnum` in `lib/schema.ts`. Never redefine them in TypeScript — derive types with `typeof myEnum.enumValues[number]`.
 
 ## Common Workflows
 
@@ -117,16 +119,17 @@ npm run dev      # local Next.js dev server (uses DATABASE_URL from .env.local)
 ### Database migrations
 
 ```bash
-npm run db:migrate:dev -- --name <description>   # create + apply migration
+npm run db:migrate:dev -- --name <description>   # create + apply migration (Prisma CLI)
 npm run db:migrate:deploy                         # apply in production
-npm run db:generate                               # regenerate Prisma client after schema edit
-npm run db:studio                                 # Prisma Studio GUI
+npm run db:studio                                 # Drizzle Studio GUI
 ```
+
+After adding columns to `prisma/schema.prisma`, also update `lib/schema.ts` (Drizzle) to match.
 
 ### Deploying
 
 ```bash
-npm run deploy   # builds for Cloudflare Pages + deploys via wrangler
+npm run deploy   # opennextjs-cloudflare build + wrangler deploy
 ```
 
 ## Environment Variables
@@ -134,6 +137,8 @@ npm run deploy   # builds for Cloudflare Pages + deploys via wrangler
 Copy `.env.example` to `.env.local`. Required:
 
 - `DATABASE_URL` — Neon connection string (pooled, HTTP mode)
+- `IRON_SESSION_SECRET` — session encryption key, min 32 chars
+- `ADMIN_SECRET` — password for `/admin` page
 
 ## Conventions
 

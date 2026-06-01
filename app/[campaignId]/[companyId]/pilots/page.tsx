@@ -6,6 +6,7 @@ import PilotCard from "@/components/pilots/PilotCard";
 import { MAX_NAMED_PILOTS } from "@/lib/constants/scales";
 import { getCompanyForPilots } from "@/lib/actions/company";
 import { getSessionFromCookies } from "@/lib/auth/session";
+import { canWriteCompany } from "@/lib/auth/access";
 
 interface Props {
   params: Promise<{ campaignId: string; companyId: string }>;
@@ -15,7 +16,7 @@ export default async function PilotsPage({ params }: Props) {
   const { campaignId, companyId } = await params;
   const [company, session] = await Promise.all([getCompanyForPilots(companyId), getSessionFromCookies()]);
   if (!company || company.campaignId !== campaignId) notFound();
-  const canWrite = session.role === "CAMPAIGN_MANAGER" || session.userId === company.userId;
+  const canWrite = canWriteCompany(session, company.userId);
 
   const namedPilots = company.pilots.filter((p) => p.isNamed && !p.isKilled);
   const regularCrew = company.pilots.filter((p) => !p.isNamed && !p.isKilled);

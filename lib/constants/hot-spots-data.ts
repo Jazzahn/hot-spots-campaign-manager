@@ -29,6 +29,8 @@ export interface ContractTemplate {
   specialRules: string;
   purchaseOptions: string;
   side: "A" | "B";
+  /** True when this side can be left open — the opposing side operates solo against NPCs */
+  optional?: boolean;
 }
 
 export interface HotSpotData {
@@ -38,8 +40,6 @@ export interface HotSpotData {
   faction: string;
   recommendedFor: "NEW_PLAYERS" | "EXPERIENCED" | "VETERAN_CAPSTONE";
   contracts: ContractTemplate[];
-  /** Side A can operate solo — opposing side is optional, not required for play */
-  soloSideA?: boolean;
 }
 
 export const HOT_SPOTS_DATA: HotSpotData[] = [
@@ -685,7 +685,6 @@ export const HOT_SPOTS_DATA: HotSpotData[] = [
     primaryTerrain: "Varied",
     faction: "Independent / Pirate",
     recommendedFor: "EXPERIENCED",
-    soloSideA: true,
     contracts: [
       {
         contractNumber: "PIRACY-A",
@@ -730,6 +729,7 @@ export const HOT_SPOTS_DATA: HotSpotData[] = [
         specialRules: "Same Reputation mechanics apply if garrison commits unauthorized actions.",
         purchaseOptions: "Mercenary/Pirate Purchase Options Table.",
         side: "B",
+        optional: true,
       },
     ],
   },

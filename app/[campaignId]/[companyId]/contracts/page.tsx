@@ -4,10 +4,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import AddContractForm from "@/components/contracts/AddContractForm";
-import { formatSP } from "@/lib/utils";
+import { formatSP, formatContractType } from "@/lib/utils";
 import { getScale } from "@/lib/constants/scales";
 import { getCompanyForContracts } from "@/lib/actions/company";
 import { getSessionFromCookies } from "@/lib/auth/session";
+import { canWriteCompany } from "@/lib/auth/access";
 
 interface Props {
   params: Promise<{ campaignId: string; companyId: string }>;
@@ -25,7 +26,7 @@ export default async function ContractsPage({ params, searchParams }: Props) {
   const [{ campaignId, companyId }, sp] = await Promise.all([params, searchParams]);
   const [company, session] = await Promise.all([getCompanyForContracts(companyId), getSessionFromCookies()]);
   if (!company || company.campaignId !== campaignId) notFound();
-  const canWrite = session.role === "CAMPAIGN_MANAGER" || session.userId === company.userId;
+  const canWrite = canWriteCompany(session, company.userId);
   const initialHotSpot = sp.hotSpot;
   const initialSide = (sp.side === "A" || sp.side === "B") ? sp.side : undefined;
 
@@ -66,7 +67,7 @@ export default async function ContractsPage({ params, searchParams }: Props) {
                       <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="font-semibold">{contract.contractName}</h3>
                         <Badge variant={STATUS_VARIANT[contract.status] ?? "outline"}>{contract.status}</Badge>
-                        <Badge variant="outline">{contract.contractType.replace(/_/g, " ")}</Badge>
+                        <Badge variant="outline">{formatContractType(contract.contractType)}</Badge>
                       </div>
                       <p className="text-sm text-muted-foreground mt-1">
                         {contract.hotSpot} · Scale {contract.scale} · {contract.durationMonths} months

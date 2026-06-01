@@ -125,12 +125,12 @@ export async function getCampaignConflicts(campaignId: string) {
 
   return Array.from(byHotSpot.entries()).map(([hotSpot, entries]) => {
     const hsData = HOT_SPOTS_DATA.find((h) => h.planet === hotSpot || h.name === hotSpot) ?? null;
-    const withSides = entries.map((e) => {
-      const matchedTemplate = hsData?.contracts.find((c) => c.name === e.contractName);
-      return { ...e, side: matchedTemplate?.side ?? null };
-    });
     const templateA = hsData?.contracts.find((c) => c.side === "A") ?? null;
     const templateB = hsData?.contracts.find((c) => c.side === "B") ?? null;
+    const withSides = entries.map((e) => ({
+      ...e,
+      side: (e.contractName === templateA?.name ? "A" : e.contractName === templateB?.name ? "B" : null) as "A" | "B" | null,
+    }));
     return {
       hotSpot,
       hsData,
@@ -138,7 +138,7 @@ export async function getCampaignConflicts(campaignId: string) {
       sideB: withSides.filter((e) => e.side === "B"),
       templateA,
       templateB,
-      soloSideA: hsData?.soloSideA ?? false,
+      opposingSideOptional: templateB?.optional ?? false,
     };
   });
 }

@@ -8,6 +8,7 @@ import UnitActions from "@/components/force/UnitActions";
 import { calculateRepairCost, getRepairLabel } from "@/lib/calculations/repair";
 import { getCompanyForForce } from "@/lib/actions/company";
 import { getSessionFromCookies } from "@/lib/auth/session";
+import { canWriteCompany } from "@/lib/auth/access";
 
 interface Props {
   params: Promise<{ campaignId: string; companyId: string }>;
@@ -17,7 +18,7 @@ export default async function ForcePage({ params }: Props) {
   const { campaignId, companyId } = await params;
   const [company, session] = await Promise.all([getCompanyForForce(companyId), getSessionFromCookies()]);
   if (!company || company.campaignId !== campaignId) notFound();
-  const canWrite = session.role === "CAMPAIGN_MANAGER" || session.userId === company.userId;
+  const canWrite = canWriteCompany(session, company.userId);
 
   const activeUnits = company.units.filter((u) => u.status !== "TRULY_DESTROYED");
   const totalBV = activeUnits.reduce((sum, u) => sum + u.battleValue, 0);

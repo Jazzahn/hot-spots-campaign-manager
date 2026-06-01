@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCompanyForLayout } from "@/lib/actions/company";
 import { getSessionFromCookies } from "@/lib/auth/session";
+import { canWriteCompany } from "@/lib/auth/access";
 
 interface Props {
   children: React.ReactNode;
@@ -14,7 +15,7 @@ export default async function CompanyLayout({ children, params }: Props) {
   const [company, session] = await Promise.all([getCompanyForLayout(companyId), getSessionFromCookies()]);
   if (!company || company.campaignId !== campaignId) notFound();
 
-  const canWrite = session.role === "CAMPAIGN_MANAGER" || session.userId === company.userId;
+  const canWrite = canWriteCompany(session, company.userId);
   const inDebt = company.warchest < 0;
 
   const navLinks = [

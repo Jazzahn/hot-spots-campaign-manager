@@ -3,12 +3,13 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { formatSP } from "@/lib/utils";
+import { formatSP, formatContractType } from "@/lib/utils";
 import { UnitStatusBadge } from "@/components/force/UnitStatusBadge";
 import ContractActions from "@/components/contracts/ContractActions";
 import AddTrackForm from "@/components/tracks/AddTrackForm";
 import { getContractDetail } from "@/lib/actions/contracts";
 import { getSessionFromCookies } from "@/lib/auth/session";
+import { canWriteCompany } from "@/lib/auth/access";
 
 interface Props {
   params: Promise<{ campaignId: string; companyId: string; contractId: string }>;
@@ -35,7 +36,7 @@ export default async function ContractDetailPage({ params }: Props) {
   if (!contract || contract.companyId !== companyId || contract.company.campaignId !== campaignId) notFound();
 
   const company = contract.company;
-  const canWrite = session.role === "CAMPAIGN_MANAGER" || session.userId === company.userId;
+  const canWrite = canWriteCompany(session, company.userId);
   const totalCombatPay = contract.tracks.reduce((sum, t) => sum + t.combatPay, 0);
   const maintenanceCost = 500 * contract.scale;
   const basePay = Math.floor(maintenanceCost * (contract.basePayPct / 100));
@@ -51,7 +52,7 @@ export default async function ContractDetailPage({ params }: Props) {
           </div>
           <h1 className="text-2xl font-bold">{contract.contractName}</h1>
           <p className="text-muted-foreground text-sm">
-            {contract.hotSpot} · {contract.contractType.replace(/_/g, " ")} · Scale {contract.scale}
+            {contract.hotSpot} · {formatContractType(contract.contractType)} · Scale {contract.scale}
           </p>
         </div>
         {canWrite && <ContractActions contract={contract} companyId={companyId} />}
