@@ -56,6 +56,7 @@ export async function getCampaign(id: string) {
           units: { columns: { id: true } },
           pilots: { columns: { id: true } },
           contracts: { columns: { id: true } },
+          user: { columns: { callsign: true } },
         },
       },
     },

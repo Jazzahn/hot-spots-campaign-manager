@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCampaign } from "@/lib/actions/campaign";
+import { getSessionFromCookies } from "@/lib/auth/session";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatSP } from "@/lib/utils";
 import NewCompanyForm from "@/components/NewCompanyForm";
 import DeleteCompanyButton from "@/components/DeleteCompanyButton";
+import CopyInviteKey from "@/components/auth/CopyInviteKey";
 
 interface Props {
   params: Promise<{ campaignId: string }>;
@@ -13,11 +15,16 @@ interface Props {
 
 export default async function CampaignOverviewPage({ params }: Props) {
   const { campaignId } = await params;
-  const campaign = await getCampaign(campaignId);
+  const [campaign, session] = await Promise.all([getCampaign(campaignId), getSessionFromCookies()]);
   if (!campaign) notFound();
+
+  const isManager = session.userId && session.userId === campaign.managedById;
 
   return (
     <div className="space-y-8">
+      {isManager && campaign.inviteKey && (
+        <CopyInviteKey inviteKey={campaign.inviteKey} />
+      )}
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">{campaign.name}</h1>
@@ -70,10 +77,15 @@ export default async function CampaignOverviewPage({ params }: Props) {
                     <Stat label="Command" value={company.commandType === "MERCENARY" ? "Mercenary" : "Regular"} />
                     {company.background && <Stat label="Background" value={company.background} />}
                   </div>
-                  <div className="flex gap-3 text-xs text-muted-foreground pt-1 border-t border-border">
-                    <span>{company._count.units} units</span>
-                    <span>{company._count.pilots} pilots</span>
-                    <span>{company._count.contracts} contracts</span>
+                  <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground pt-1 border-t border-border">
+                    <div className="flex gap-3">
+                      <span>{company._count.units} units</span>
+                      <span>{company._count.pilots} pilots</span>
+                      <span>{company._count.contracts} contracts</span>
+                    </div>
+                    {company.user && (
+                      <span className="text-primary/70">{company.user.callsign}</span>
+                    )}
                   </div>
                 </CardContent>
               </Link>

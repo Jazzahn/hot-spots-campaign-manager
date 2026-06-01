@@ -68,14 +68,14 @@ export async function getCompany(id: string) {
 export async function getCompanyForLayout(id: string) {
   return db.query.companies.findFirst({
     where: eq(companies.id, id),
-    columns: { id: true, name: true, warchest: true, reputation: true, scale: true, campaignId: true },
+    columns: { id: true, name: true, warchest: true, reputation: true, scale: true, campaignId: true, userId: true },
   });
 }
 
 export async function getCompanyForForce(id: string) {
   return db.query.companies.findFirst({
     where: eq(companies.id, id),
-    columns: { id: true, campaignId: true, warchest: true, reputation: true, scale: true },
+    columns: { id: true, campaignId: true, userId: true, warchest: true, reputation: true, scale: true },
     with: {
       units: { orderBy: [asc(units.createdAt)] },
       pilots: true,
@@ -86,7 +86,7 @@ export async function getCompanyForForce(id: string) {
 export async function getCompanyForPilots(id: string) {
   return db.query.companies.findFirst({
     where: eq(companies.id, id),
-    columns: { id: true, campaignId: true },
+    columns: { id: true, campaignId: true, userId: true },
     with: {
       campaign: { columns: { gameRules: true } },
       pilots: {
@@ -101,7 +101,7 @@ export async function getCompanyForPilots(id: string) {
 export async function getCompanyForContracts(id: string) {
   return db.query.companies.findFirst({
     where: eq(companies.id, id),
-    columns: { id: true, campaignId: true, reputation: true, scale: true },
+    columns: { id: true, campaignId: true, userId: true, reputation: true, scale: true },
     with: {
       contracts: {
         with: { tracks: { columns: { id: true } } },

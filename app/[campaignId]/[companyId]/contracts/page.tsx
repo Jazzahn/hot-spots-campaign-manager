@@ -7,6 +7,7 @@ import AddContractForm from "@/components/contracts/AddContractForm";
 import { formatSP } from "@/lib/utils";
 import { getScale } from "@/lib/constants/scales";
 import { getCompanyForContracts } from "@/lib/actions/company";
+import { getSessionFromCookies } from "@/lib/auth/session";
 
 interface Props {
   params: Promise<{ campaignId: string; companyId: string }>;
@@ -21,8 +22,9 @@ const STATUS_VARIANT: Record<string, "success" | "warning" | "danger" | "outline
 
 export default async function ContractsPage({ params }: Props) {
   const { campaignId, companyId } = await params;
-  const company = await getCompanyForContracts(companyId);
+  const [company, session] = await Promise.all([getCompanyForContracts(companyId), getSessionFromCookies()]);
   if (!company || company.campaignId !== campaignId) notFound();
+  const canWrite = session.role === "CAMPAIGN_MANAGER" || session.userId === company.userId;
 
   return (
     <div className="space-y-6">
@@ -31,7 +33,7 @@ export default async function ContractsPage({ params }: Props) {
           <h1 className="text-2xl font-bold">Contracts</h1>
           <p className="text-muted-foreground text-sm mt-1">Reputation: {company.reputation}</p>
         </div>
-        <AddContractForm companyId={companyId} currentScale={company.scale} />
+        {canWrite && <AddContractForm companyId={companyId} currentScale={company.scale} />}
       </div>
 
       {company.contracts.length === 0 ? (

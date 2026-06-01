@@ -8,6 +8,7 @@ import { UnitStatusBadge } from "@/components/force/UnitStatusBadge";
 import ContractActions from "@/components/contracts/ContractActions";
 import AddTrackForm from "@/components/tracks/AddTrackForm";
 import { getContractDetail } from "@/lib/actions/contracts";
+import { getSessionFromCookies } from "@/lib/auth/session";
 
 interface Props {
   params: Promise<{ campaignId: string; companyId: string; contractId: string }>;
@@ -30,10 +31,11 @@ const RESULT_VARIANT: Record<string, "success" | "warning" | "danger" | "seconda
 export default async function ContractDetailPage({ params }: Props) {
   const { campaignId, companyId, contractId } = await params;
 
-  const contract = await getContractDetail(contractId);
+  const [contract, session] = await Promise.all([getContractDetail(contractId), getSessionFromCookies()]);
   if (!contract || contract.companyId !== companyId || contract.company.campaignId !== campaignId) notFound();
 
   const company = contract.company;
+  const canWrite = session.role === "CAMPAIGN_MANAGER" || session.userId === company.userId;
   const totalCombatPay = contract.tracks.reduce((sum, t) => sum + t.combatPay, 0);
   const maintenanceCost = 500 * contract.scale;
   const basePay = Math.floor(maintenanceCost * (contract.basePayPct / 100));
@@ -52,7 +54,7 @@ export default async function ContractDetailPage({ params }: Props) {
             {contract.hotSpot} · {contract.contractType.replace(/_/g, " ")} · Scale {contract.scale}
           </p>
         </div>
-        <ContractActions contract={contract} companyId={companyId} />
+        {canWrite && <ContractActions contract={contract} companyId={companyId} />}
       </div>
 
       <Card>
@@ -83,7 +85,7 @@ export default async function ContractDetailPage({ params }: Props) {
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="font-semibold">Tracks</h2>
-          {contract.status === "ACTIVE" && (
+          {canWrite && contract.status === "ACTIVE" && (
             <AddTrackForm
               contract={{ ...contract, tracks: contract.tracks }}
               units={company.units.filter((u) => u.availableNextTrack && u.status !== "TRULY_DESTROYED")}

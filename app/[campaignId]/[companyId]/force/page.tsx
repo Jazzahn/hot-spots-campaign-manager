@@ -7,6 +7,7 @@ import AddUnitForm from "@/components/force/AddUnitForm";
 import UnitActions from "@/components/force/UnitActions";
 import { calculateRepairCost, getRepairLabel } from "@/lib/calculations/repair";
 import { getCompanyForForce } from "@/lib/actions/company";
+import { getSessionFromCookies } from "@/lib/auth/session";
 
 interface Props {
   params: Promise<{ campaignId: string; companyId: string }>;
@@ -14,8 +15,9 @@ interface Props {
 
 export default async function ForcePage({ params }: Props) {
   const { campaignId, companyId } = await params;
-  const company = await getCompanyForForce(companyId);
+  const [company, session] = await Promise.all([getCompanyForForce(companyId), getSessionFromCookies()]);
   if (!company || company.campaignId !== campaignId) notFound();
+  const canWrite = session.role === "CAMPAIGN_MANAGER" || session.userId === company.userId;
 
   const activeUnits = company.units.filter((u) => u.status !== "TRULY_DESTROYED");
   const totalBV = activeUnits.reduce((sum, u) => sum + u.battleValue, 0);
@@ -29,7 +31,7 @@ export default async function ForcePage({ params }: Props) {
             {activeUnits.length} units · {formatBV(totalBV)} total
           </p>
         </div>
-        <AddUnitForm companyId={companyId} />
+        {canWrite && <AddUnitForm companyId={companyId} />}
       </div>
 
       {activeUnits.length === 0 ? (
@@ -75,12 +77,14 @@ export default async function ForcePage({ params }: Props) {
                         </p>
                       )}
                     </div>
-                    <UnitActions
-                      unit={unit}
-                      pilots={company.pilots.filter((p) => p.isNamed && !p.isKilled)}
-                      repairCost={repairCost}
-                      companyId={companyId}
-                    />
+                    {canWrite && (
+                      <UnitActions
+                        unit={unit}
+                        pilots={company.pilots.filter((p) => p.isNamed && !p.isKilled)}
+                        repairCost={repairCost}
+                        companyId={companyId}
+                      />
+                    )}
                   </div>
                 </CardContent>
               </Card>

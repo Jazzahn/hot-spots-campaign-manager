@@ -5,6 +5,7 @@ import AddPilotForm from "@/components/pilots/AddPilotForm";
 import PilotCard from "@/components/pilots/PilotCard";
 import { MAX_NAMED_PILOTS } from "@/lib/constants/scales";
 import { getCompanyForPilots } from "@/lib/actions/company";
+import { getSessionFromCookies } from "@/lib/auth/session";
 
 interface Props {
   params: Promise<{ campaignId: string; companyId: string }>;
@@ -12,8 +13,9 @@ interface Props {
 
 export default async function PilotsPage({ params }: Props) {
   const { campaignId, companyId } = await params;
-  const company = await getCompanyForPilots(companyId);
+  const [company, session] = await Promise.all([getCompanyForPilots(companyId), getSessionFromCookies()]);
   if (!company || company.campaignId !== campaignId) notFound();
+  const canWrite = session.role === "CAMPAIGN_MANAGER" || session.userId === company.userId;
 
   const namedPilots = company.pilots.filter((p) => p.isNamed && !p.isKilled);
   const regularCrew = company.pilots.filter((p) => !p.isNamed && !p.isKilled);
@@ -28,11 +30,13 @@ export default async function PilotsPage({ params }: Props) {
             {namedPilots.length}/{MAX_NAMED_PILOTS} named pilots
           </p>
         </div>
-        <AddPilotForm
-          companyId={companyId}
-          units={company.units.filter((u) => u.status !== "TRULY_DESTROYED")}
-          namedPilotCount={namedPilots.length}
-        />
+        {canWrite && (
+          <AddPilotForm
+            companyId={companyId}
+            units={company.units.filter((u) => u.status !== "TRULY_DESTROYED")}
+            namedPilotCount={namedPilots.length}
+          />
+        )}
       </div>
 
       <section className="space-y-3">

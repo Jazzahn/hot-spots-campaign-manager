@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCompanyForLayout } from "@/lib/actions/company";
+import { getSessionFromCookies } from "@/lib/auth/session";
 
 interface Props {
   children: React.ReactNode;
@@ -10,9 +11,10 @@ interface Props {
 export default async function CompanyLayout({ children, params }: Props) {
   const { campaignId, companyId } = await params;
 
-  const company = await getCompanyForLayout(companyId);
+  const [company, session] = await Promise.all([getCompanyForLayout(companyId), getSessionFromCookies()]);
   if (!company || company.campaignId !== campaignId) notFound();
 
+  const canWrite = session.role === "CAMPAIGN_MANAGER" || session.userId === company.userId;
   const inDebt = company.warchest < 0;
 
   const navLinks = [
@@ -46,6 +48,9 @@ export default async function CompanyLayout({ children, params }: Props) {
             ))}
           </nav>
           <div className="ml-auto flex items-center gap-4 text-xs text-muted-foreground shrink-0">
+            {!canWrite && (
+              <span className="text-yellow-500/70 border border-yellow-500/30 rounded px-1.5 py-0.5">View only</span>
+            )}
             <span>Rep {company.reputation}</span>
             <span>Scale {company.scale}</span>
             <span className={inDebt ? "text-red-400 font-semibold" : "text-green-400 font-semibold"}>
