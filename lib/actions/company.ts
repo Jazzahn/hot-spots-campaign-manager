@@ -5,8 +5,10 @@ import { db } from "@/lib/db";
 import { companies, transactions, units, pilots, contracts, campaigns } from "@/lib/schema";
 import { eq, asc, desc } from "drizzle-orm";
 import type { CreateCompanyInput, TransactionCategory } from "@/types";
+import { getSessionFromCookies } from "@/lib/auth/session";
 
 export async function createCompany(input: CreateCompanyInput) {
+  const session = await getSessionFromCookies();
   const companyId = crypto.randomUUID();
   const warchest = input.warchest ?? 3000;
 
@@ -14,6 +16,7 @@ export async function createCompany(input: CreateCompanyInput) {
     db.insert(companies).values({
       id: companyId,
       campaignId: input.campaignId,
+      userId: session.userId ?? null,
       name: input.name,
       commandType: input.commandType,
       background: input.background,

@@ -5,8 +5,12 @@ import { db } from "@/lib/db";
 import { campaigns, companies } from "@/lib/schema";
 import { eq, count, desc, sql } from "drizzle-orm";
 import type { CreateCampaignInput } from "@/types";
+import { getSessionFromCookies } from "@/lib/auth/session";
 
-export async function createCampaign(input: CreateCampaignInput & { managedById?: string }) {
+export async function createCampaign(input: CreateCampaignInput) {
+  const session = await getSessionFromCookies();
+  const managedById = session.role === "CAMPAIGN_MANAGER" ? session.userId : null;
+
   const [campaign] = await db
     .insert(campaigns)
     .values({
@@ -14,7 +18,7 @@ export async function createCampaign(input: CreateCampaignInput & { managedById?
       name: input.name,
       gameRules: input.gameRules,
       background: input.background,
-      managedById: input.managedById,
+      managedById,
       inviteKey: crypto.randomUUID(),
       updatedAt: new Date(),
     })
