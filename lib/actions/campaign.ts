@@ -8,7 +8,9 @@ import { HOT_SPOTS_DATA } from "@/lib/constants/hot-spots-data";
 import type { CreateCampaignInput } from "@/types";
 import { getSessionFromCookies } from "@/lib/auth/session";
 
-export async function createCampaign(input: CreateCampaignInput) {
+export async function createCampaign(
+  input: CreateCampaignInput & { inGameStartYear?: number; inGameStartMonth?: number }
+) {
   const session = await getSessionFromCookies();
   const managedById = session.role === "CAMPAIGN_MANAGER" ? session.userId : null;
 
@@ -21,11 +23,25 @@ export async function createCampaign(input: CreateCampaignInput) {
       background: input.background,
       managedById,
       inviteKey: crypto.randomUUID(),
+      inGameStartYear: input.inGameStartYear ?? 3151,
+      inGameStartMonth: input.inGameStartMonth ?? 1,
       updatedAt: new Date(),
     })
     .returning();
   revalidatePath("/");
   return campaign;
+}
+
+export async function updateCampaignDate(
+  campaignId: string,
+  inGameStartYear: number,
+  inGameStartMonth: number
+) {
+  await db
+    .update(campaigns)
+    .set({ inGameStartYear, inGameStartMonth, updatedAt: new Date() })
+    .where(eq(campaigns.id, campaignId));
+  revalidatePath(`/${campaignId}`);
 }
 
 export async function getAllCampaigns() {

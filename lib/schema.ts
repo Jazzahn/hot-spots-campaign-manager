@@ -51,6 +51,8 @@ export const campaigns = pgTable("Campaign", {
   name: text("name").notNull(),
   gameRules: gameRulesEnum("gameRules").notNull().default("BATTLETECH"),
   currentMonth: integer("currentMonth").notNull().default(1),
+  inGameStartYear: integer("inGameStartYear").notNull().default(3151),
+  inGameStartMonth: integer("inGameStartMonth").notNull().default(1),
   background: text("background"),
   managedById: text("managedById").references(() => users.id),
   inviteKey: text("inviteKey").unique(),

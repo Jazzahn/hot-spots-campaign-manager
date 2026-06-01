@@ -37,6 +37,7 @@ export default async function ContractDetailPage({ params }: Props) {
 
   const company = contract.company;
   const canWrite = canWriteCompany(session, company.userId);
+  const isManager = session.role === "CAMPAIGN_MANAGER";
   const totalCombatPay = contract.tracks.reduce((sum, t) => sum + t.combatPay, 0);
   const maintenanceCost = 500 * contract.scale;
   const basePay = Math.floor(maintenanceCost * (contract.basePayPct / 100));
@@ -55,7 +56,7 @@ export default async function ContractDetailPage({ params }: Props) {
             {contract.hotSpot} · {formatContractType(contract.contractType)} · Scale {contract.scale}
           </p>
         </div>
-        {canWrite && <ContractActions contract={contract} companyId={companyId} />}
+        {canWrite && <ContractActions contract={contract} companyId={companyId} isManager={isManager} />}
       </div>
 
       <Card>

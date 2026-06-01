@@ -22,6 +22,8 @@ export default function NewCampaignForm() {
         name: data.get("name") as string,
         gameRules: data.get("gameRules") as "BATTLETECH" | "ALPHA_STRIKE",
         background: (data.get("background") as string) || undefined,
+        inGameStartYear: Number(data.get("inGameStartYear")) || 3151,
+        inGameStartMonth: Number(data.get("inGameStartMonth")) || 1,
       });
       setOpen(false);
       router.push(`/${campaign.id}`);
@@ -54,9 +56,27 @@ export default function NewCampaignForm() {
             </Select>
           </div>
 
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="inGameStartMonth">Starting Month</Label>
+              <Select name="inGameStartMonth" defaultValue="1">
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {["January","February","March","April","May","June","July","August","September","October","November","December"].map((m, i) => (
+                    <SelectItem key={i+1} value={String(i+1)}>{m}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="inGameStartYear">Starting Year</Label>
+              <Input id="inGameStartYear" name="inGameStartYear" type="number" defaultValue={3151} min={2000} max={4000} />
+            </div>
+          </div>
+
           <div className="space-y-1.5">
             <Label htmlFor="background">Setting Notes (optional)</Label>
-            <Input id="background" name="background" placeholder="e.g. Hot Spots: Draconis Reach, 3151" />
+            <Input id="background" name="background" placeholder="e.g. Hot Spots: Draconis Reach" />
           </div>
 
           <div className="flex gap-2 pt-2">

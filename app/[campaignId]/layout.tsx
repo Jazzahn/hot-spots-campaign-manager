@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCompanyForLayout } from "@/lib/actions/company";
 import { getCampaign } from "@/lib/actions/campaign";
+import { formatInGameDate } from "@/lib/utils";
 
 interface Props {
   children: React.ReactNode;
@@ -24,6 +25,9 @@ export default async function CampaignLayout({ children, params }: Props) {
           <Link href={`/${campaignId}`} className="font-semibold text-primary shrink-0">
             {campaign.name}
           </Link>
+          <span className="text-muted-foreground text-xs shrink-0">
+            {formatInGameDate(campaign.currentMonth, campaign.inGameStartYear, campaign.inGameStartMonth)}
+          </span>
         </div>
       </header>
       <main className="max-w-7xl mx-auto px-4 py-6">{children}</main>

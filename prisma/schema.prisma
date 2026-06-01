@@ -113,11 +113,13 @@ model User {
 }
 
 model Campaign {
-  id           String    @id @default(cuid())
-  name         String
-  gameRules    GameRules @default(BATTLETECH)
-  currentMonth Int       @default(1)
-  background   String?
+  id                String    @id @default(cuid())
+  name              String
+  gameRules         GameRules @default(BATTLETECH)
+  currentMonth      Int       @default(1)
+  inGameStartYear   Int       @default(3151)
+  inGameStartMonth  Int       @default(1)
+  background        String?
   managedById  String?
   managedBy    User?     @relation(fields: [managedById], references: [id])
   inviteKey    String?   @unique

@@ -5,7 +5,8 @@ import { getSessionFromCookies } from "@/lib/auth/session";
 import CampaignConflicts from "@/components/contracts/CampaignConflicts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { formatSP } from "@/lib/utils";
+import { formatSP, formatInGameDate } from "@/lib/utils";
+import EditCampaignDateForm from "@/components/EditCampaignDateForm";
 import NewCompanyForm from "@/components/NewCompanyForm";
 import DeleteCompanyButton from "@/components/DeleteCompanyButton";
 import CopyInviteKey from "@/components/auth/CopyInviteKey";
@@ -39,7 +40,16 @@ export default async function CampaignOverviewPage({ params }: Props) {
           <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
             <span>{campaign.gameRules === "ALPHA_STRIKE" ? "Alpha Strike" : "BattleTech"}</span>
             <span>·</span>
-            <span>Month {campaign.currentMonth}</span>
+            <span className="font-medium text-foreground">
+              {formatInGameDate(campaign.currentMonth, campaign.inGameStartYear, campaign.inGameStartMonth)}
+            </span>
+            {isManager && (
+              <EditCampaignDateForm
+                campaignId={campaignId}
+                currentStartYear={campaign.inGameStartYear}
+                currentStartMonth={campaign.inGameStartMonth}
+              />
+            )}
             {campaign.background && (
               <>
                 <span>·</span>

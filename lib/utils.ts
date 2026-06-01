@@ -13,6 +13,22 @@ export function formatBV(bv: number): string {
   return bv.toLocaleString() + " BV";
 }
 
+const IN_GAME_MONTHS = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+export function formatInGameDate(
+  currentMonth: number,
+  startYear: number,
+  startMonth: number
+): string {
+  const totalIndex = (startMonth - 1) + (currentMonth - 1);
+  const year = startYear + Math.floor(totalIndex / 12);
+  const month = IN_GAME_MONTHS[totalIndex % 12];
+  return `${month} ${year}`;
+}
+
 const LOWERCASE_CONTRACT_WORDS = new Set(["of"]);
 
 export function formatContractType(type: string): string {

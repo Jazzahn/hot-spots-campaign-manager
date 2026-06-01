@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import LeaveConflictButton from "@/components/contracts/LeaveConflictButton";
 import ReadyUpButton from "@/components/contracts/ReadyUpButton";
 import AdvanceMonthButton from "@/components/contracts/AdvanceMonthButton";
+import CancelContractButton from "@/components/contracts/CancelContractButton";
 import type { getCampaignConflicts } from "@/lib/actions/campaign";
 import { formatContractType } from "@/lib/utils";
 
@@ -43,7 +44,7 @@ export default function CampaignConflicts({
 
           return c.isLocked
             ? <ActiveConflictCard key={c.hotSpot} conflict={c} campaignId={campaignId} campaignCurrentMonth={campaignCurrentMonth} myCompanyId={myCompanyId} myEntry={myEntry} isManager={isManager} />
-            : <PendingConflictCard key={c.hotSpot} conflict={c} campaignId={campaignId} campaignCurrentMonth={campaignCurrentMonth} myCompanyId={myCompanyId} myEntry={myEntry} />;
+            : <PendingConflictCard key={c.hotSpot} conflict={c} campaignId={campaignId} campaignCurrentMonth={campaignCurrentMonth} myCompanyId={myCompanyId} myEntry={myEntry} isManager={isManager} />;
         })}
       </div>
     </div>
@@ -56,12 +57,14 @@ function PendingConflictCard({
   campaignCurrentMonth,
   myCompanyId,
   myEntry,
+  isManager,
 }: {
   conflict: Conflict;
   campaignId: string;
   campaignCurrentMonth: number;
   myCompanyId: string | null;
   myEntry: ConflictEntry | null;
+  isManager: boolean;
 }) {
   const onSideA = myCompanyId ? c.sideA.some((e) => e.companyId === myCompanyId) : false;
   const onSideB = myCompanyId ? c.sideB.some((e) => e.companyId === myCompanyId) : false;
@@ -85,8 +88,8 @@ function PendingConflictCard({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3 pb-4">
-        <SideRow label="Side A" template={c.templateA} companies={c.sideA} />
-        <SideRow label="Side B" template={c.templateB} companies={c.sideB} optional={c.opposingSideOptional} />
+        <SideRow label="Side A" template={c.templateA} companies={c.sideA} isManager={isManager} />
+        <SideRow label="Side B" template={c.templateB} companies={c.sideB} optional={c.opposingSideOptional} isManager={isManager} />
 
         {myCompanyId && (
           <div className="flex gap-2 pt-1">
@@ -160,8 +163,8 @@ function ActiveConflictCard({
       <CardContent className="space-y-3 pb-4">
         {/* Forces */}
         <div className="space-y-1">
-          <SideRow label="Side A" template={c.templateA} companies={c.sideA} />
-          <SideRow label="Side B" template={c.templateB} companies={c.sideB} />
+          <SideRow label="Side A" template={c.templateA} companies={c.sideA} isManager={isManager} />
+          <SideRow label="Side B" template={c.templateB} companies={c.sideB} isManager={isManager} />
         </div>
 
         {/* Monthly schedule */}
@@ -250,11 +253,13 @@ function SideRow({
   template,
   companies,
   optional,
+  isManager,
 }: {
   label: string;
   template: { name: string; contractType: string } | null;
   companies: ConflictEntry[];
   optional?: boolean;
+  isManager?: boolean;
 }) {
   return (
     <div className="flex items-start gap-2 text-sm">
@@ -274,6 +279,13 @@ function SideRow({
               <Badge variant={e.status === "ACTIVE" ? "success" : "warning"} className="text-xs">
                 {e.isReady && e.status === "PENDING" ? "Ready" : e.status}
               </Badge>
+              {isManager && (
+                <CancelContractButton
+                  contractId={e.contractId}
+                  companyName={e.companyName}
+                  status={e.status}
+                />
+              )}
             </div>
           ))
         )}

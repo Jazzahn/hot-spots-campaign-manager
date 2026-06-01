@@ -236,6 +236,31 @@ export async function breakContract(contractId: string, escapeClause: boolean) {
   revalidatePath(`${path}/contracts`);
 }
 
+export async function cancelContractAsManager(contractId: string) {
+  const contract = await db.query.contracts.findFirst({
+    where: eq(contracts.id, contractId),
+    columns: { id: true, status: true, companyId: true, hotSpot: true },
+    with: {
+      tracks: { columns: { id: true } },
+      company: { columns: { campaignId: true } },
+    },
+  });
+  if (!contract) throw new Error("Contract not found");
+
+  if (contract.status === "PENDING") {
+    await db.delete(contracts).where(eq(contracts.id, contractId));
+  } else if (contract.status === "ACTIVE") {
+    await db.update(contracts).set({ status: "BROKEN", updatedAt: new Date() }).where(eq(contracts.id, contractId));
+  } else {
+    throw new Error("Contract is already completed or broken");
+  }
+
+  const path = await getCompanyPath(contract.companyId);
+  revalidatePath(path);
+  revalidatePath(`${path}/contracts`);
+  if (contract.company?.campaignId) revalidatePath(`/${contract.company.campaignId}`);
+}
+
 export async function leaveConflict(contractId: string) {
   const contract = await db.query.contracts.findFirst({
     where: eq(contracts.id, contractId),
