@@ -292,40 +292,78 @@ function UnitRow({
         </button>
       </TooltipTrigger>
 
-      <TooltipContent side="left" className="max-w-72">
-        <div className="space-y-1.5">
-          <div className="font-semibold">
-            {unit.chassis}
-            {unit.model !== unit.chassis && (
-              <span className="font-normal text-muted-foreground ml-1">{unit.model}</span>
-            )}
-          </div>
-          <div className="flex flex-wrap gap-1.5 text-xs">
-            <span className="text-muted-foreground">{unit.tonnage}t</span>
-            <span className="text-muted-foreground">·</span>
-            <span className="text-muted-foreground">{unit.techBase === "CLAN" ? "Clan" : "Inner Sphere"}</span>
-            {unit.isOmni && <><span className="text-muted-foreground">·</span><span className="text-muted-foreground">OmniMech</span></>}
-          </div>
-          <div className="flex gap-3 text-xs">
-            <span><span className="text-muted-foreground">BV </span>{unit.battleValue.toLocaleString()}</span>
-            <span><span className="text-muted-foreground">PV </span>{unit.pointValue}</span>
-          </div>
-          {unit.weapons && (
-            <div className="pt-1 border-t border-border/50">
-              <p className="text-xs text-muted-foreground mb-0.5">Weapons</p>
-              <p className="text-xs leading-relaxed">
-                {unit.weapons.split(" · ").map((w, i) => (
-                  <span key={i}>
-                    {i > 0 && <span className="text-muted-foreground"> · </span>}
-                    {w}
-                  </span>
-                ))}
-              </p>
-            </div>
-          )}
-          <p className="text-xs text-muted-foreground pt-0.5">Click to add to force</p>
-        </div>
+      <TooltipContent side="left" className="w-80 p-0 overflow-hidden">
+        <RecordSheet unit={unit} />
       </TooltipContent>
     </Tooltip>
+  );
+}
+
+function RecordSheet({ unit }: { unit: DraconisReachUnit }) {
+  const techLabel = unit.techBase === "CLAN" ? "Clan" : "Inner Sphere";
+  const weapons = unit.weapons ? unit.weapons.split(" · ") : [];
+
+  return (
+    <div className="text-xs font-mono">
+      {/* Header */}
+      <div className="bg-muted/60 px-3 py-2 border-b border-border">
+        <div className="font-bold text-sm text-foreground leading-tight">
+          {unit.chassis}
+          {unit.model !== unit.chassis && (
+            <span className="font-normal text-muted-foreground ml-1.5 text-xs">{unit.model}</span>
+          )}
+        </div>
+        <div className="text-muted-foreground mt-0.5">
+          {unit.tonnage}t · {techLabel}{unit.isOmni ? " OmniMech" : ""}
+        </div>
+      </div>
+
+      {/* Stats row */}
+      <div className="px-3 py-2 border-b border-border grid grid-cols-3 gap-x-4">
+        <div>
+          <div className="text-muted-foreground text-[10px] uppercase tracking-wide">Movement</div>
+          <div className="text-foreground font-semibold">
+            {unit.walk}/{unit.run}/{unit.jump}
+          </div>
+          <div className="text-muted-foreground text-[10px]">W/R/J</div>
+        </div>
+        <div>
+          <div className="text-muted-foreground text-[10px] uppercase tracking-wide">Heat Sinks</div>
+          <div className="text-foreground font-semibold">{unit.hs}</div>
+          <div className="text-muted-foreground text-[10px]">
+            {unit.techBase === "CLAN" ? "double" : "single/dbl"}
+          </div>
+        </div>
+        <div>
+          <div className="text-muted-foreground text-[10px] uppercase tracking-wide">Armor</div>
+          <div className="text-foreground font-semibold">{unit.armor}</div>
+          <div className="text-muted-foreground text-[10px]">total pts</div>
+        </div>
+      </div>
+
+      {/* Weapons */}
+      {weapons.length > 0 && (
+        <div className="px-3 py-2 border-b border-border">
+          <div className="text-muted-foreground text-[10px] uppercase tracking-wide mb-1.5">
+            Weapons &amp; Equipment
+          </div>
+          <div className="space-y-0.5">
+            {weapons.map((w, i) => (
+              <div key={i} className="flex items-center gap-1.5 text-foreground">
+                <span className="text-muted-foreground">›</span>
+                <span>{w}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Footer */}
+      <div className="px-3 py-1.5 flex justify-between text-muted-foreground">
+        <span>BV {unit.battleValue.toLocaleString()}</span>
+        <span>PV {unit.pointValue}</span>
+        <span className="italic text-[10px] self-center">click to add</span>
+      </div>
+    </div>
   );
 }
