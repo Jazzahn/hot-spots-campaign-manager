@@ -57,7 +57,7 @@ export async function getAllCampaigns() {
       companyCount: count(companies.id),
     })
     .from(campaigns)
-    .leftJoin(companies, eq(companies.campaignId, campaigns.id))
+    .leftJoin(companies, and(eq(companies.campaignId, campaigns.id), eq(companies.isHolding, false)))
     .groupBy(campaigns.id)
     .orderBy(desc(campaigns.createdAt));
 
@@ -87,7 +87,9 @@ export async function getCampaign(id: string) {
 
   return {
     ...campaign,
-    companies: campaign.companies.map((c) => ({
+    companies: campaign.companies
+      .filter((c) => !c.isHolding)
+      .map((c) => ({
       ...c,
       _count: {
         units: c.units.length,
@@ -145,6 +147,7 @@ export async function getCampaignConflicts(campaignId: string) {
       companyId: companies.id,
       companyName: companies.name,
       companyUserId: companies.userId,
+      isOpposingForce: contracts.isOpposingForce,
     })
     .from(contracts)
     .innerJoin(companies, eq(contracts.companyId, companies.id))
@@ -168,19 +171,31 @@ export async function getCampaignConflicts(campaignId: string) {
     const templateB = hsData?.contracts.find((c) => c.side === "B") ?? null;
     const withSides = entries.map((e) => ({
       ...e,
-      side: (e.contractName === templateA?.name ? "A" : e.contractName === templateB?.name ? "B" : null) as "A" | "B" | null,
+      // OPFOR placeholders are always Side B. Otherwise match the book template names;
+      // for random ("Dobless") conflicts there is no template, so the player sits on Side A.
+      side: (e.isOpposingForce
+        ? "B"
+        : e.contractName === templateA?.name
+          ? "A"
+          : e.contractName === templateB?.name
+            ? "B"
+            : hsData
+              ? null
+              : "A") as "A" | "B" | null,
     }));
     const sideA = withSides.filter((e) => e.side === "A");
     const sideB = withSides.filter((e) => e.side === "B");
     const allEntries = [...sideA, ...sideB];
-    const isLocked = allEntries.some((e) => e.status === "ACTIVE");
+    // OPFOR placeholders never drive locking/advancement counts.
+    const playerEntries = allEntries.filter((e) => !e.isOpposingForce);
+    const isLocked = playerEntries.some((e) => e.status === "ACTIVE");
     const currentConflictMonth = isLocked
-      ? Math.max(...allEntries.filter((e) => e.status === "ACTIVE").map((e) => e.conflictMonth))
+      ? Math.max(...playerEntries.filter((e) => e.status === "ACTIVE").map((e) => e.conflictMonth))
       : 1;
     const maxDurationMonths = isLocked
-      ? Math.max(...allEntries.filter((e) => e.status === "ACTIVE").map((e) => e.durationMonths))
+      ? Math.max(...playerEntries.filter((e) => e.status === "ACTIVE").map((e) => e.durationMonths))
       : 0;
-    const readyCount = allEntries.filter((e) => e.isReady).length;
+    const readyCount = playerEntries.filter((e) => e.isReady).length;
     const currentMonthSchedule = hsData?.monthlySchedule?.find((m) => m.month === currentConflictMonth) ?? null;
     return {
       hotSpot,
@@ -194,7 +209,7 @@ export async function getCampaignConflicts(campaignId: string) {
       currentConflictMonth,
       maxDurationMonths,
       readyCount,
-      totalCount: allEntries.length,
+      totalCount: playerEntries.length,
       currentMonthSchedule,
     };
   });

@@ -75,6 +75,7 @@ export const companies = pgTable("Company", {
   trackingJumps: boolean("trackingJumps").notNull().default(false),
   currentLocation: text("currentLocation"),
   companyOptions: jsonb("companyOptions"),
+  isHolding: boolean("isHolding").notNull().default(false),
   createdAt: timestamp("createdAt", { precision: 3 }).notNull().defaultNow(),
   updatedAt: timestamp("updatedAt", { precision: 3 }).notNull().defaultNow(),
 });
@@ -142,6 +143,13 @@ export const contracts = pgTable("Contract", {
   salvageRightsPct: integer("salvageRightsPct").notNull().default(0),
   commandRights: commandRightsEnum("commandRights").notNull().default("INDEPENDENT"),
   transportPct: integer("transportPct").notNull().default(100),
+  // Presented (default) terms — recorded for the negotiation audit trail
+  defaultBasePayPct: integer("defaultBasePayPct"),
+  defaultSupportType: supportTypeEnum("defaultSupportType"),
+  defaultSupportPct: integer("defaultSupportPct"),
+  defaultSalvageRightsPct: integer("defaultSalvageRightsPct"),
+  defaultCommandRights: commandRightsEnum("defaultCommandRights"),
+  defaultTransportPct: integer("defaultTransportPct"),
   startMonth: integer("startMonth"),
   endMonth: integer("endMonth"),
   notes: text("notes"),
@@ -149,9 +157,20 @@ export const contracts = pgTable("Contract", {
   conflictMonth: integer("conflictMonth").notNull().default(1),
   companyMonthReady: boolean("companyMonthReady").notNull().default(false),
   conflictAdvancedThisMonth: boolean("conflictAdvancedThisMonth").notNull().default(false),
+  isOpposingForce: boolean("isOpposingForce").notNull().default(false),
   createdAt: timestamp("createdAt", { precision: 3 }).notNull().defaultNow(),
   updatedAt: timestamp("updatedAt", { precision: 3 }).notNull().defaultNow(),
 });
+
+export const randomContractOffers = pgTable("RandomContractOffer", {
+  id: text("id").primaryKey(),
+  companyId: text("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  campaignMonth: integer("campaignMonth").notNull(),
+  hiringHall: text("hiringHall").notNull(),
+  payload: jsonb("payload").notNull(),
+  status: text("status").notNull().default("OPEN"),
+  createdAt: timestamp("createdAt", { precision: 3 }).notNull().defaultNow(),
+}, (t) => [uniqueIndex("RandomContractOffer_companyId_campaignMonth_key").on(t.companyId, t.campaignMonth)]);
 
 export const tracks = pgTable("Track", {
   id: text("id").primaryKey(),
@@ -237,6 +256,11 @@ export const companyRelations = relations(companies, ({ one, many }) => ({
   pilots: many(pilots),
   contracts: many(contracts),
   transactions: many(transactions),
+  randomContractOffers: many(randomContractOffers),
+}));
+
+export const randomContractOfferRelations = relations(randomContractOffers, ({ one }) => ({
+  company: one(companies, { fields: [randomContractOffers.companyId], references: [companies.id] }),
 }));
 
 export const unitRelations = relations(units, ({ one, many }) => ({

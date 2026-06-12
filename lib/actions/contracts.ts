@@ -7,6 +7,8 @@ import { eq, and, inArray, sum, sql } from "drizzle-orm";
 import type { CreateContractInput } from "@/types";
 import { updateWarchest } from "./company";
 import { getScale } from "@/lib/constants/scales";
+import { valuesToSteps, validateNegotiation, type TermKey } from "@/lib/calculations/contract-negotiation";
+import type { CommandRightsValue, SupportValue } from "@/lib/constants/contract-steps";
 
 async function getCompanyPath(companyId: string) {
   const c = await db.query.companies.findFirst({
@@ -18,6 +20,44 @@ async function getCompanyPath(companyId: string) {
 }
 
 export async function createContract(input: CreateContractInput) {
+  const hasPresented =
+    input.defaultBasePayPct != null &&
+    input.defaultSupportType != null &&
+    input.defaultSupportPct != null &&
+    input.defaultSalvageRightsPct != null &&
+    input.defaultCommandRights != null &&
+    input.defaultTransportPct != null;
+
+  // Defense-in-depth: re-validate the negotiation server-side. The strict UI should
+  // never submit an illegal contract, but the action must not trust the client.
+  if (hasPresented) {
+    const defaults = valuesToSteps({
+      basePayPct: input.defaultBasePayPct!,
+      commandRights: input.defaultCommandRights as CommandRightsValue,
+      salvageRightsPct: input.defaultSalvageRightsPct!,
+      supportType: input.defaultSupportType as SupportValue["type"],
+      supportPct: input.defaultSupportPct!,
+      transportPct: input.defaultTransportPct!,
+    });
+    const current = valuesToSteps({
+      basePayPct: input.basePayPct,
+      commandRights: input.commandRights as CommandRightsValue,
+      salvageRightsPct: input.salvageRightsPct,
+      supportType: input.supportType as SupportValue["type"],
+      supportPct: input.supportPct,
+      transportPct: input.transportPct,
+    });
+    const result = validateNegotiation({
+      defaults: defaults as Record<TermKey, number>,
+      current: current as Record<TermKey, number>,
+      scale: input.scale,
+      reputation: input.reputation ?? 0,
+    });
+    if (!result.legal) {
+      throw new Error(`Illegal contract negotiation: ${result.errors.join(" ")}`);
+    }
+  }
+
   const [contract] = await db
     .insert(contracts)
     .values({
@@ -34,12 +74,27 @@ export async function createContract(input: CreateContractInput) {
       salvageRightsPct: input.salvageRightsPct,
       commandRights: input.commandRights as never,
       transportPct: input.transportPct,
+      defaultBasePayPct: input.defaultBasePayPct ?? null,
+      defaultSupportType: (input.defaultSupportType as never) ?? null,
+      defaultSupportPct: input.defaultSupportPct ?? null,
+      defaultSalvageRightsPct: input.defaultSalvageRightsPct ?? null,
+      defaultCommandRights: (input.defaultCommandRights as never) ?? null,
+      defaultTransportPct: input.defaultTransportPct ?? null,
       updatedAt: new Date(),
     })
     .returning();
 
+  // Accepting a contract relocates the company to the contract's system.
+  await db
+    .update(companies)
+    .set({ currentLocation: input.hotSpot, updatedAt: new Date() })
+    .where(eq(companies.id, input.companyId));
+
   const path = await getCompanyPath(input.companyId);
+  const campaignId = path.split("/")[1];
   revalidatePath(`${path}/contracts`);
+  revalidatePath(path);
+  revalidatePath(`/${campaignId}`);
   return contract;
 }
 
@@ -76,7 +131,7 @@ export async function readyUpContract(contractId: string, campaignCurrentMonth: 
     with: { company: { columns: { campaignId: true } } },
   });
   const forThisCampaignUpdated = updated.filter(
-    (c) => c.company?.campaignId === contract.company?.campaignId
+    (c) => c.company?.campaignId === contract.company?.campaignId && !c.isOpposingForce
   );
 
   const allReady = forThisCampaignUpdated.length > 0 && forThisCampaignUpdated.every((c) => c.isReady);
@@ -126,7 +181,9 @@ export async function advanceCompanyMonth(contractId: string, campaignCurrentMon
     where: and(eq(contracts.status, "ACTIVE"), eq(contracts.hotSpot, contract.hotSpot)),
     with: { company: { columns: { campaignId: true } } },
   });
-  const forThisConflict = allActive.filter((c) => c.company?.campaignId === campaignId);
+  const forThisConflict = allActive.filter(
+    (c) => c.company?.campaignId === campaignId && !c.isOpposingForce
+  );
 
   // Check if all companies in this conflict are now ready (including the one we just updated)
   const allReady = forThisConflict.every((c) =>
@@ -162,7 +219,9 @@ export async function advanceCompanyMonth(contractId: string, campaignCurrentMon
       where: eq(contracts.status, "ACTIVE"),
       with: { company: { columns: { campaignId: true } } },
     });
-    const forCampaign = allCampaignActive.filter((c) => c.company?.campaignId === campaignId);
+    const forCampaign = allCampaignActive.filter(
+      (c) => c.company?.campaignId === campaignId && !c.isOpposingForce
+    );
 
     const justAdvancedIds = new Set(forThisConflict.map((c) => c.id));
     const allConflictsAdvanced = forCampaign.every((c) =>

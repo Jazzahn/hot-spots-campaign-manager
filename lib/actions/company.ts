@@ -6,38 +6,81 @@ import { companies, transactions, units, pilots, contracts, campaigns } from "@/
 import { eq, asc, desc, and, sum } from "drizzle-orm";
 import type { CreateCompanyInput, TransactionCategory } from "@/types";
 import { getSessionFromCookies } from "@/lib/auth/session";
+import { isHiringHallSystem, OFF_HIRING_HALL_START_FEE } from "@/lib/constants/systems";
 
 export async function createCompany(input: CreateCompanyInput) {
   const session = await getSessionFromCookies();
   const companyId = crypto.randomUUID();
-  const warchest = input.warchest ?? 3000;
+  const baseWarchest = input.warchest ?? 3000;
 
-  await db.batch([
-    db.insert(companies).values({
-      id: companyId,
-      campaignId: input.campaignId,
-      userId: session.userId ?? null,
-      name: input.name,
-      commandType: input.commandType,
-      background: input.background,
-      parentCommand: input.parentCommand,
-      warchest,
-      trackingJumps: input.trackingJumps ?? false,
-      updatedAt: new Date(),
-    }),
-    db.insert(transactions).values({
-      id: crypto.randomUUID(),
-      companyId,
-      month: 1,
-      category: "OTHER",
-      amount: warchest,
-      description: "Starting Warchest",
-      runningBalance: warchest,
-    }),
-  ]);
+  // Companies start free at a Hiring Hall; starting anywhere else costs a deployment fee.
+  const deploymentFee = isHiringHallSystem(input.startingLocation) ? 0 : OFF_HIRING_HALL_START_FEE;
+  const warchest = baseWarchest - deploymentFee;
+
+  const insertCompany = db.insert(companies).values({
+    id: companyId,
+    campaignId: input.campaignId,
+    userId: session.userId ?? null,
+    name: input.name,
+    commandType: input.commandType,
+    background: input.background,
+    parentCommand: input.parentCommand,
+    warchest,
+    currentLocation: input.startingLocation,
+    trackingJumps: input.trackingJumps ?? false,
+    updatedAt: new Date(),
+  });
+  const insertStarting = db.insert(transactions).values({
+    id: crypto.randomUUID(),
+    companyId,
+    month: 1,
+    category: "OTHER",
+    amount: baseWarchest,
+    description: "Starting Warchest",
+    runningBalance: baseWarchest,
+  });
+  const insertFee = db.insert(transactions).values({
+    id: crypto.randomUUID(),
+    companyId,
+    month: 1,
+    category: "TRANSPORT",
+    amount: -deploymentFee,
+    description: `Deployment to ${input.startingLocation}`,
+    runningBalance: warchest,
+  });
+
+  if (deploymentFee > 0) {
+    await db.batch([insertCompany, insertStarting, insertFee]);
+  } else {
+    await db.batch([insertCompany, insertStarting]);
+  }
 
   revalidatePath(`/${input.campaignId}`);
   return { id: companyId, campaignId: input.campaignId, name: input.name };
+}
+
+/**
+ * Lazily fetch (or create) the per-campaign dummy "holding" company that owns
+ * unassigned / OPFOR contracts. Hidden from player-facing listings.
+ */
+export async function getOrCreateHoldingCompany(campaignId: string) {
+  const existing = await db.query.companies.findFirst({
+    where: and(eq(companies.campaignId, campaignId), eq(companies.isHolding, true)),
+    columns: { id: true },
+  });
+  if (existing) return existing.id;
+
+  const id = crypto.randomUUID();
+  await db.insert(companies).values({
+    id,
+    campaignId,
+    userId: null,
+    name: "Unassigned (OPFOR)",
+    warchest: 0,
+    isHolding: true,
+    updatedAt: new Date(),
+  });
+  return id;
 }
 
 export async function getCompany(id: string) {
@@ -132,6 +175,21 @@ export async function deleteCompany(companyId: string) {
   if (!company) throw new Error("Company not found");
   await db.delete(companies).where(eq(companies.id, companyId));
   revalidatePath(`/${company.campaignId}`);
+}
+
+export async function updateCompanyLocation(companyId: string, location: string) {
+  const company = await db.query.companies.findFirst({
+    where: eq(companies.id, companyId),
+    columns: { campaignId: true },
+  });
+  if (!company) throw new Error("Company not found");
+
+  await db
+    .update(companies)
+    .set({ currentLocation: location.trim() || null, updatedAt: new Date() })
+    .where(eq(companies.id, companyId));
+
+  revalidatePath(`/${company.campaignId}/${companyId}`);
 }
 
 export async function updateReputation(companyId: string, delta: number) {

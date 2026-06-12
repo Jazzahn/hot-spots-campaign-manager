@@ -58,6 +58,7 @@ export async function joinCampaignAction(
       campaignId: campaign.id,
       userId,
       name: companyName,
+      currentLocation: "Tybalt",
       updatedAt: new Date(),
     }),
   ]);

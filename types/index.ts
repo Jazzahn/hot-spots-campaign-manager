@@ -74,6 +74,7 @@ export interface CreateCompanyInput {
   parentCommand?: string;
   warchest?: number;
   trackingJumps?: boolean;
+  startingLocation: string;
 }
 
 export interface CreateUnitInput {
@@ -110,6 +111,14 @@ export interface CreateContractInput {
   salvageRightsPct: number;
   commandRights: string;
   transportPct: number;
+  // Presented (default) terms + negotiation context — recorded for the audit trail
+  defaultBasePayPct?: number;
+  defaultSupportType?: string;
+  defaultSupportPct?: number;
+  defaultSalvageRightsPct?: number;
+  defaultCommandRights?: string;
+  defaultTransportPct?: number;
+  reputation?: number;
 }
 
 export interface RecordTrackInput {

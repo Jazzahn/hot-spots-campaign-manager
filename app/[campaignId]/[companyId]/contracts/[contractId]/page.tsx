@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { formatSP, formatContractType } from "@/lib/utils";
 import { UnitStatusBadge } from "@/components/force/UnitStatusBadge";
 import ContractActions from "@/components/contracts/ContractActions";
+import NegotiationSummary from "@/components/contracts/NegotiationSummary";
 import AddTrackForm from "@/components/tracks/AddTrackForm";
 import AdvanceCompanyMonthButton from "@/components/contracts/AdvanceCompanyMonthButton";
 import { getContractDetail } from "@/lib/actions/contracts";
@@ -99,6 +100,29 @@ export default async function ContractDetailPage({ params }: Props) {
             <Stat label="Tracks Played" value={String(contract.tracks.length)} />
             <Stat label="Total Combat Pay" value={formatSP(totalCombatPay)} />
           </div>
+          {contract.defaultBasePayPct != null && contract.defaultCommandRights != null && (
+            <div className="mt-3 pt-3 border-t border-border">
+              <p className="text-muted-foreground text-xs mb-2">Negotiation — presented → negotiated</p>
+              <NegotiationSummary
+                presented={{
+                  basePayPct: contract.defaultBasePayPct,
+                  commandRights: contract.defaultCommandRights,
+                  salvageRightsPct: contract.defaultSalvageRightsPct ?? 0,
+                  supportType: contract.defaultSupportType ?? "NONE",
+                  supportPct: contract.defaultSupportPct ?? 0,
+                  transportPct: contract.defaultTransportPct ?? 0,
+                }}
+                negotiated={{
+                  basePayPct: contract.basePayPct,
+                  commandRights: contract.commandRights,
+                  salvageRightsPct: contract.salvageRightsPct,
+                  supportType: contract.supportType,
+                  supportPct: contract.supportPct,
+                  transportPct: contract.transportPct,
+                }}
+              />
+            </div>
+          )}
         </CardContent>
       </Card>
 

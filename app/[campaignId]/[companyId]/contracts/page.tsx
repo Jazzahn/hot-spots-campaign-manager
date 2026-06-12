@@ -41,6 +41,7 @@ export default async function ContractsPage({ params, searchParams }: Props) {
           <AddContractForm
             companyId={companyId}
             currentScale={company.scale}
+            reputation={company.reputation}
             initialHotSpot={initialHotSpot}
             initialSide={initialSide}
           />

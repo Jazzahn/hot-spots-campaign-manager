@@ -5,15 +5,20 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { createCompany } from "@/lib/actions/company";
 import { STARTING_WARCHEST } from "@/lib/constants/scales";
+import { SYSTEM_GROUPS, isHiringHallSystem, OFF_HIRING_HALL_START_FEE } from "@/lib/constants/systems";
 
 export default function NewCompanyForm({ campaignId }: { campaignId: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const [commandType, setCommandType] = useState<"MERCENARY" | "REGULAR_MILITARY">("MERCENARY");
+  const [startingLocation, setStartingLocation] = useState("Tybalt");
+
+  const feeApplies = !isHiringHallSystem(startingLocation);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -22,9 +27,10 @@ export default function NewCompanyForm({ campaignId }: { campaignId: string }) {
       const company = await createCompany({
         campaignId,
         name: data.get("name") as string,
-        commandType: data.get("commandType") as "MERCENARY" | "REGULAR_MILITARY",
+        commandType,
         background: (data.get("background") as string) || undefined,
         warchest: Number(data.get("warchest")) || STARTING_WARCHEST,
+        startingLocation,
       });
       setOpen(false);
       router.push(`/${campaignId}/${company.id}`);
@@ -48,13 +54,35 @@ export default function NewCompanyForm({ campaignId }: { campaignId: string }) {
 
           <div className="space-y-1.5">
             <Label htmlFor="commandType">Command Type</Label>
-            <Select name="commandType" defaultValue="MERCENARY">
+            <Select value={commandType} onValueChange={(v) => setCommandType(v as "MERCENARY" | "REGULAR_MILITARY")}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="MERCENARY">Mercenary</SelectItem>
                 <SelectItem value="REGULAR_MILITARY">Regular Military</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="startingLocation">Starting Location</Label>
+            <Select value={startingLocation} onValueChange={setStartingLocation}>
+              <SelectTrigger><SelectValue placeholder="Select a system…" /></SelectTrigger>
+              <SelectContent className="max-h-72">
+                {SYSTEM_GROUPS.map((g) => (
+                  <SelectGroup key={g.label}>
+                    <SelectLabel>{g.label}</SelectLabel>
+                    {g.systems.map((s) => (
+                      <SelectItem key={s} value={s}>{s}</SelectItem>
+                    ))}
+                  </SelectGroup>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              {feeApplies
+                ? `Starting outside a Hiring Hall costs ${OFF_HIRING_HALL_START_FEE} SP (deducted from your warchest).`
+                : "Free — starting at a Hiring Hall is at no cost."}
+            </p>
           </div>
 
           <div className="space-y-1.5">

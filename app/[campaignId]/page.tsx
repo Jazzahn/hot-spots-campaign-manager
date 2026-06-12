@@ -90,6 +90,9 @@ export default async function CampaignOverviewPage({ params }: Props) {
                 <div className="flex items-start justify-between gap-2">
                   <Link href={`/${campaignId}/${company.id}`} className="flex-1 min-w-0">
                     <CardTitle className="text-lg hover:text-primary transition-colors">{company.name}</CardTitle>
+                    <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                      {company.currentLocation ? `📍 ${company.currentLocation}` : "📍 Location not set"}
+                    </p>
                   </Link>
                   <div className="flex items-center gap-1 shrink-0">
                     <Badge variant="outline">Scale {company.scale}</Badge>

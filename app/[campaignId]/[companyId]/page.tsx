@@ -7,6 +7,9 @@ import { Button } from "@/components/ui/button";
 import { formatSP, formatBV } from "@/lib/utils";
 import { UnitStatusBadge } from "@/components/force/UnitStatusBadge";
 import { getScale } from "@/lib/constants/scales";
+import { getSessionFromCookies } from "@/lib/auth/session";
+import { canWriteCompany } from "@/lib/auth/access";
+import EditCompanyLocationForm from "@/components/EditCompanyLocationForm";
 
 interface Props {
   params: Promise<{ campaignId: string; companyId: string }>;
@@ -14,8 +17,9 @@ interface Props {
 
 export default async function CompanyDashboardPage({ params }: Props) {
   const { campaignId, companyId } = await params;
-  const company = await getCompany(companyId);
+  const [company, session] = await Promise.all([getCompany(companyId), getSessionFromCookies()]);
   if (!company || company.campaignId !== campaignId) notFound();
+  const canWrite = canWriteCompany(session, company.userId);
 
   const activeContract = company.contracts.find((c) => c.status === "ACTIVE");
   const namedPilots = company.pilots.filter((p) => p.isNamed && !p.isKilled);
@@ -28,6 +32,24 @@ export default async function CompanyDashboardPage({ params }: Props) {
 
   return (
     <div className="space-y-6">
+      <Card>
+        <CardContent className="py-3 flex items-center justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-xs text-muted-foreground">Current Location</p>
+            <p className="font-medium truncate">
+              {company.currentLocation ? (
+                <span className="inline-flex items-center gap-1.5">📍 {company.currentLocation}</span>
+              ) : (
+                <span className="text-muted-foreground">Not set</span>
+              )}
+            </p>
+          </div>
+          {canWrite && (
+            <EditCompanyLocationForm companyId={companyId} currentLocation={company.currentLocation} />
+          )}
+        </CardContent>
+      </Card>
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard
           label="Warchest"
